@@ -1,11 +1,13 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useProfile } from '@/hooks/useProfile'
 import { Avatar } from '@/components/Avatar'
 import { Tag } from '@/components/Tag'
 
 export default function ProfilePage() {
+  const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -46,7 +48,12 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-md mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Profile</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-700 transition-colors">
+          ← Back
+        </button>
+        <h1 className="text-2xl font-bold">Profile</h1>
+      </div>
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <div className="flex flex-col items-center gap-3 mb-6">
           <Avatar uri={profile.photo_url} size={96} revealed />

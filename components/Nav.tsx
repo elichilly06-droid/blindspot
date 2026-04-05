@@ -29,7 +29,7 @@ export default function Nav() {
               key={href}
               href={href}
               className={`text-sm font-medium transition-colors ${
-                pathname === href ? 'text-red-700' : 'text-gray-500 hover:text-gray-900'
+                pathname === href ? 'text-pink-500' : 'text-gray-500 hover:text-gray-900'
               }`}
             >
               {label}

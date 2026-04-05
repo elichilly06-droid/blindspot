@@ -8,6 +8,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect('/login')
 
+  // If user has no profile yet, send them to onboarding
+  const { data: profile } = await supabase.from('profiles').select('id').eq('id', user.id).single()
+  if (!profile) redirect('/onboarding')
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Nav />
