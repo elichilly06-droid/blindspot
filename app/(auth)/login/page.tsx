@@ -2,27 +2,39 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { signInWithEmail, signUp } from '@/lib/auth'
+import { supabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isSignUp, setIsSignUp] = useState(false)
+  const [isForgot, setIsForgot] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
     setLoading(true)
     try {
-      const { error } = isSignUp
-        ? await signUp(email, password)
-        : await signInWithEmail(email, password)
-      if (error) {
-        setError(error.message)
+      if (isForgot) {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        })
+        if (error) setError(error.message)
+        else setSuccess('Check your email for a password reset link.')
       } else {
-        router.push(isSignUp ? '/onboarding' : '/discover')
+        const { error } = isSignUp
+          ? await signUp(email, password)
+          : await signInWithEmail(email, password)
+        if (error) {
+          setError(error.message)
+        } else {
+          router.push(isSignUp ? '/onboarding' : '/discover')
+        }
       }
     } catch (e: any) {
       setError(e.message)
@@ -45,34 +57,48 @@ export default function LoginPage() {
             placeholder="you@northeastern.edu"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-red-400 transition-colors"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={e => setPassword(e.target.value)}
-            className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-red-400 transition-colors"
+            className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-pink-400 transition-colors"
             required
           />
 
-          {error && <p className="text-red-600 text-sm">{error}</p>}
+          {!isForgot && (
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-pink-400 transition-colors"
+              required
+            />
+          )}
+
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {success && <p className="text-green-600 text-sm">{success}</p>}
 
           <button
             type="submit"
             disabled={loading}
-            className="bg-red-700 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50 mt-1"
+            className="bg-pink-500 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50 mt-1"
           >
-            {loading ? '…' : isSignUp ? 'Create account' : 'Sign in'}
+            {loading ? '…' : isForgot ? 'Send reset link' : isSignUp ? 'Create account' : 'Sign in'}
           </button>
+
+          {!isForgot && (
+            <button
+              type="button"
+              onClick={() => { setIsSignUp(!isSignUp); setError('') }}
+              className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            </button>
+          )}
 
           <button
             type="button"
-            onClick={() => setIsSignUp(!isSignUp)}
-            className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
+            onClick={() => { setIsForgot(!isForgot); setError(''); setSuccess('') }}
+            className="text-sm text-pink-400 hover:text-pink-600 transition-colors"
           >
-            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            {isForgot ? '← Back to sign in' : 'Forgot password?'}
           </button>
         </form>
       </div>
