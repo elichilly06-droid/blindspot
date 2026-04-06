@@ -6,6 +6,24 @@ import { useProfile } from '@/hooks/useProfile'
 import { Avatar } from '@/components/Avatar'
 import { Tag } from '@/components/Tag'
 
+const GENDERS = ['Man', 'Woman', 'Non-binary']
+const SEXUALITIES = ['Straight', 'Gay', 'Lesbian', 'Bisexual', 'Pansexual', 'Asexual', 'Queer', 'Prefer not to say']
+const RACES = ['Asian', 'Black / African American', 'Hispanic / Latino', 'Middle Eastern', 'Native American', 'Pacific Islander', 'White / Caucasian', 'Mixed / Multiracial', 'Prefer not to say']
+const HEIGHTS: string[] = []
+for (let ft = 4; ft <= 7; ft++) {
+  const maxIn = ft === 7 ? 0 : 11
+  for (let inc = (ft === 4 ? 8 : 0); inc <= maxIn; inc++) HEIGHTS.push(`${ft}'${inc}"`)
+}
+
+function Chip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-sm border transition-colors ${selected ? 'bg-pink-500 text-white border-pink-500' : 'border-gray-200 text-gray-700 hover:border-gray-400'}`}>
+      {label}
+    </button>
+  )
+}
+
 export default function ProfilePage() {
   const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
@@ -19,6 +37,10 @@ export default function ProfilePage() {
   const [name, setName] = useState('')
   const [major, setMajor] = useState('')
   const [year, setYear] = useState('')
+  const [gender, setGender] = useState('')
+  const [sexuality, setSexuality] = useState('')
+  const [height, setHeight] = useState('')
+  const [race, setRace] = useState('')
   const [promptAnswer, setPromptAnswer] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -28,13 +50,17 @@ export default function ProfilePage() {
       setName(profile.name ?? '')
       setMajor(profile.major ?? '')
       setYear(profile.year ?? '')
+      setGender(profile.gender ?? '')
+      setSexuality(profile.sexuality ?? '')
+      setHeight(profile.height ?? '')
+      setRace(profile.race ?? '')
       setPromptAnswer(profile.prompt_answer ?? '')
     }
   }, [profile])
 
   const save = async () => {
     setSaving(true)
-    const { error } = await updateProfile({ name, major, year, prompt_answer: promptAnswer })
+    const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, prompt_answer: promptAnswer })
     if (error) setError(error.message)
     else setEditing(false)
     setSaving(false)
@@ -42,18 +68,17 @@ export default function ProfilePage() {
 
   if (loading || !profile) return (
     <div className="flex justify-center py-16">
-      <div className="w-8 h-8 border-2 border-red-700 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
   return (
     <div className="max-w-md mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-700 transition-colors">
-          ← Back
-        </button>
+        <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-700 transition-colors">← Back</button>
         <h1 className="text-2xl font-bold">Profile</h1>
       </div>
+
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <div className="flex flex-col items-center gap-3 mb-6">
           <Avatar uri={profile.photo_url} size={96} revealed />
@@ -61,55 +86,86 @@ export default function ProfilePage() {
         </div>
 
         {editing ? (
-          <div className="flex flex-col gap-3">
-            <input
-              className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-red-400"
-              value={name} onChange={e => setName(e.target.value)} placeholder="Name"
-            />
-            <input
-              className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-red-400"
-              value={major} onChange={e => setMajor(e.target.value)} placeholder="Major"
-            />
-            <input
-              className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-red-400"
-              value={year} onChange={e => setYear(e.target.value)} placeholder="Year"
-            />
+          <div className="flex flex-col gap-4">
+            <input className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-pink-400"
+              value={name} onChange={e => setName(e.target.value)} placeholder="Name" />
+            <input className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-pink-400"
+              value={major} onChange={e => setMajor(e.target.value)} placeholder="Major" />
+            <input className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-pink-400"
+              value={year} onChange={e => setYear(e.target.value)} placeholder="Year" />
+
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Gender</p>
+              <div className="flex flex-wrap gap-2">
+                {GENDERS.map(g => <Chip key={g} label={g} selected={gender === g} onClick={() => setGender(g)} />)}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Sexuality</p>
+              <div className="flex flex-wrap gap-2">
+                {SEXUALITIES.map(s => <Chip key={s} label={s} selected={sexuality === s} onClick={() => setSexuality(s)} />)}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Height</p>
+              <select className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-pink-400 text-gray-700"
+                value={height} onChange={e => setHeight(e.target.value)}>
+                <option value="">Select height</option>
+                {HEIGHTS.map(h => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Race / Ethnicity</p>
+              <div className="flex flex-wrap gap-2">
+                {RACES.map(r => <Chip key={r} label={r} selected={race === r} onClick={() => setRace(r)} />)}
+              </div>
+            </div>
+
             {profile.prompt && (
               <>
                 <p className="text-xs text-gray-400 italic px-1">{profile.prompt}</p>
-                <textarea
-                  className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-red-400 resize-none"
-                  rows={3} value={promptAnswer} onChange={e => setPromptAnswer(e.target.value)}
-                />
+                <textarea className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-pink-400 resize-none"
+                  rows={3} value={promptAnswer} onChange={e => setPromptAnswer(e.target.value)} />
               </>
             )}
-            {error && <p className="text-red-600 text-sm">{error}</p>}
-            <button
-              onClick={save} disabled={saving}
-              className="w-full bg-red-700 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50 mt-1"
-            >
+
+            {error && <p className="text-red-500 text-sm">{error}</p>}
+            <button onClick={save} disabled={saving}
+              className="w-full bg-pink-500 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50 mt-1">
               {saving ? 'Saving…' : 'Save'}
             </button>
-            <button onClick={() => setEditing(false)} className="text-sm text-gray-400 text-center py-1">
-              Cancel
-            </button>
+            <button onClick={() => setEditing(false)} className="text-sm text-gray-400 text-center py-1">Cancel</button>
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            <div className="text-center text-sm text-gray-500">{profile.major} · {profile.year}</div>
+            <div className="text-center text-sm text-gray-500">
+              {[profile.major, profile.year, profile.height].filter(Boolean).join(' · ')}
+            </div>
+
+            {(profile.gender || profile.sexuality || profile.race) && (
+              <div className="flex flex-wrap gap-1.5 justify-center">
+                {profile.gender && <Tag label={profile.gender} />}
+                {profile.sexuality && <Tag label={profile.sexuality} />}
+                {profile.race && <Tag label={profile.race} />}
+              </div>
+            )}
+
             {profile.prompt && (
               <div className="bg-gray-50 rounded-xl p-4">
                 <p className="text-xs text-gray-400 italic mb-1">{profile.prompt}</p>
                 <p className="text-sm text-gray-700">{profile.prompt_answer}</p>
               </div>
             )}
+
             <div className="flex flex-wrap gap-1.5 justify-center">
               {(profile.interests ?? []).map((i: string) => <Tag key={i} label={i} />)}
             </div>
-            <button
-              onClick={() => setEditing(true)}
-              className="w-full mt-2 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors"
-            >
+
+            <button onClick={() => setEditing(true)}
+              className="w-full mt-2 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors">
               Edit profile
             </button>
           </div>
