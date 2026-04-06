@@ -52,9 +52,9 @@ create table matches (
   user_b            uuid references profiles(id),
   message_count     int default 0,
   revealed          boolean default false,
+  first_message_at  timestamptz,
   date_proposed_by  uuid references profiles(id),
   date_confirmed    boolean default false,
-  first_message_at  timestamptz,
   created_at        timestamptz default now(),
   unique(user_a, user_b)
 );
@@ -62,6 +62,8 @@ create table matches (
 alter table matches enable row level security;
 create policy "Users can read own matches"
   on matches for select using (auth.uid() = user_a or auth.uid() = user_b);
+create policy "Users can update own matches"
+  on matches for update using (auth.uid() = user_a or auth.uid() = user_b);
 
 -- Auto-create match when both users swipe right
 create or replace function create_match_if_mutual()
@@ -124,4 +126,20 @@ create trigger on_new_message
   after insert on messages
   for each row execute procedure handle_new_message();
 
+-- ─── STORAGE ─────────────────────────────────────────────────────────────────
+-- Run in Supabase dashboard or via CLI:
+-- insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);
+
+-- RLS for avatars bucket: users can upload/update their own file; anyone can read
+create policy "Avatar upload: own file only"
+  on storage.objects for insert
+  with check (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "Avatar update: own file only"
+  on storage.objects for update
+  using (bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "Avatar read: public"
+  on storage.objects for select
+  using (bucket_id = 'avatars');
 

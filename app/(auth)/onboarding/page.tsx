@@ -57,7 +57,7 @@ for (let ft = 4; ft <= 7; ft++) {
   }
 }
 
-const STEPS = ['Name', 'About', 'Identity', 'Interests', 'Prompt']
+const STEPS = ['Name', 'About', 'Identity', 'Interests', 'Prompt', 'Photo']
 
 function getCoords(): Promise<{ lat: number; lng: number } | null> {
   return new Promise(resolve => {
@@ -99,13 +99,26 @@ export default function OnboardingPage() {
   const [interests, setInterests] = useState<string[]>([])
   const [promptIndex, setPromptIndex] = useState(0)
   const [promptAnswer, setPromptAnswer] = useState('')
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const toggleInterest = (i: string) =>
     setInterests(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])
 
+  const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPhotoFile(file)
+    setPhotoPreview(URL.createObjectURL(file))
+  }
+
   const finish = async () => {
+    if (!photoFile) {
+      setError('Please add a photo before finishing.')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -115,6 +128,20 @@ export default function OnboardingPage() {
         setSaving(false)
         return
       }
+
+      // Upload photo to Supabase Storage
+      const ext = photoFile.name.split('.').pop() ?? 'jpg'
+      const storagePath = `${user.id}/avatar.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(storagePath, photoFile, { upsert: true })
+      if (uploadError) {
+        setError('Photo upload failed: ' + uploadError.message)
+        setSaving(false)
+        return
+      }
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storagePath)
+      const photoUrl = urlData.publicUrl
 
       const coords = await getCoords()
 
@@ -132,6 +159,7 @@ export default function OnboardingPage() {
         interests,
         prompt: PROMPTS[promptIndex],
         prompt_answer: promptAnswer,
+        photo_url: photoUrl,
         ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
       })
 
@@ -265,6 +293,37 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/* Step 5 — Photo */}
+          {step === 5 && (
+            <div className="flex flex-col gap-5 items-center">
+              <h2 className="text-2xl font-bold self-start">Add your photo</h2>
+              <p className="text-sm text-gray-500 self-start -mt-2">
+                Your photo stays blurred until photos are revealed — either after 2 days or when you both agree to a date.
+              </p>
+              <label className="cursor-pointer w-full">
+                <input type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
+                {photoPreview ? (
+                  <img
+                    src={photoPreview}
+                    alt="Preview"
+                    className="w-48 h-48 rounded-full object-cover border-4 border-pink-300 mx-auto"
+                  />
+                ) : (
+                  <div className="w-48 h-48 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-2 mx-auto hover:border-pink-400 transition-colors">
+                    <span className="text-4xl">📷</span>
+                    <span className="text-xs text-gray-400">Tap to upload</span>
+                  </div>
+                )}
+              </label>
+              {photoPreview && (
+                <label className="text-xs text-pink-500 cursor-pointer hover:text-pink-700 underline">
+                  <input type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
+                  Change photo
+                </label>
+              )}
+            </div>
+          )}
+
           {/* Step 4 — Prompt */}
           {step === 4 && (
             <div className="flex flex-col gap-4">
@@ -308,7 +367,7 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={step < STEPS.length - 1 ? () => setStep(s => s + 1) : finish}
-              disabled={saving}
+              disabled={saving || (step === STEPS.length - 1 && !photoFile)}
               className="flex-1 bg-pink-500 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50"
             >
               {step < STEPS.length - 1 ? 'Next' : saving ? 'Saving…' : 'Finish'}
