@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 
 export function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 3958.8 // miles
+  const R = 3958.8
   const dLat = (lat2 - lat1) * Math.PI / 180
   const dLon = (lon2 - lon1) * Math.PI / 180
   const a =
@@ -19,7 +19,50 @@ export function getAge(birthday: string): number {
   return age
 }
 
-export async function getDiscoverProfiles(userId: string, userInterests: string[] = [], limit = 20) {
+// Returns which genders this person is attracted to, or 'all'
+function getDesiredGenders(gender?: string | null, sexuality?: string | null): string[] | 'all' {
+  if (!gender || !sexuality) return 'all'
+
+  const openSexualities = ['Bisexual', 'Pansexual', 'Queer', 'Asexual', 'Prefer not to say']
+  if (openSexualities.includes(sexuality)) return 'all'
+
+  if (sexuality === 'Straight') {
+    if (gender === 'Man') return ['Woman']
+    if (gender === 'Woman') return ['Man']
+    return 'all' // Non-binary + straight → show all
+  }
+
+  if (sexuality === 'Gay') {
+    if (gender === 'Man') return ['Man']
+    if (gender === 'Woman') return ['Woman']
+    return 'all'
+  }
+
+  if (sexuality === 'Lesbian') return ['Woman']
+
+  return 'all'
+}
+
+// True if both people are mutually compatible based on gender + sexuality
+function isCompatible(me: any, them: any): boolean {
+  const myDesired = getDesiredGenders(me.gender, me.sexuality)
+  const theirDesired = getDesiredGenders(them.gender, them.sexuality)
+
+  const iWantThem = myDesired === 'all' || !them.gender || myDesired.includes(them.gender)
+  const theyWantMe = theirDesired === 'all' || !me.gender || theirDesired.includes(me.gender)
+
+  return iWantThem && theyWantMe
+}
+
+// Score by shared interests (0–1)
+function interestScore(myInterests: string[], theirInterests: string[]): number {
+  if (!myInterests.length || !theirInterests.length) return 0
+  const shared = theirInterests.filter(i => myInterests.includes(i)).length
+  const union = new Set([...myInterests, ...theirInterests]).size
+  return shared / union // Jaccard similarity
+}
+
+export async function getDiscoverProfiles(userId: string, myProfile: any, limit = 20) {
   const { data: swiped } = await supabase
     .from('swipes')
     .select('swiped_id')
@@ -27,12 +70,13 @@ export async function getDiscoverProfiles(userId: string, userInterests: string[
 
   const swipedIds = (swiped ?? []).map((s: any) => s.swiped_id)
 
+  // Fetch a larger pool so we have enough after compatibility filtering
   let query = supabase
     .from('profiles')
     .select('*')
     .eq('is_active', true)
     .neq('id', userId)
-    .limit(limit)
+    .limit(limit * 5)
 
   if (swipedIds.length > 0)
     query = query.not('id', 'in', `(${swipedIds.join(',')})`)
@@ -40,12 +84,12 @@ export async function getDiscoverProfiles(userId: string, userInterests: string[
   const { data } = await query
   if (!data) return []
 
-  // Sort by shared interest count descending
-  return data.sort((a: any, b: any) => {
-    const sharedA = (a.interests ?? []).filter((i: string) => userInterests.includes(i)).length
-    const sharedB = (b.interests ?? []).filter((i: string) => userInterests.includes(i)).length
-    return sharedB - sharedA
-  })
+  const myInterests: string[] = myProfile?.interests ?? []
+
+  return data
+    .filter((profile: any) => isCompatible(myProfile, profile))
+    .sort((a: any, b: any) => interestScore(myInterests, b.interests ?? []) - interestScore(myInterests, a.interests ?? []))
+    .slice(0, limit)
 }
 
 export async function recordSwipe(swiperId: string, swipedId: string, direction: 'left' | 'right') {

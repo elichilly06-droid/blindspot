@@ -23,7 +23,7 @@ export default function DiscoverPage() {
 
       setMyProfile(me)
 
-      const data = await getDiscoverProfiles(user.id, me?.interests ?? [])
+      const data = await getDiscoverProfiles(user.id, me)
       setProfiles(data)
       setLoading(false)
     })
