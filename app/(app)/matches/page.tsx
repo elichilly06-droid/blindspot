@@ -29,20 +29,33 @@ export default function MatchesPage() {
         <div className="flex flex-col gap-3">
           {matches.map((match: any) => {
             const other = match.user_a?.id === userId ? match.user_b : match.user_a
+            const isDateProposed = !!match.date_proposed_by
+            const isDateConfirmed = match.date_confirmed
+
             return (
               <Link
                 key={match.id}
                 href={`/chat/${match.id}`}
-                className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-gray-100 hover:border-gray-200 transition-colors shadow-sm"
+                className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-pink-100 hover:border-pink-200 transition-colors shadow-sm"
               >
                 <Avatar uri={other?.photo_url} size={52} revealed={match.revealed} />
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900">{match.revealed ? other?.name : '???'}</p>
-                  <div className="mt-1.5">
-                    <ProgressBar current={match.message_count} total={5} />
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-pink-600">{other?.name ?? '???'}</p>
+                    {isDateConfirmed && (
+                      <span className="text-xs bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full">Date confirmed 💘</span>
+                    )}
+                    {isDateProposed && !isDateConfirmed && (
+                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Date proposed</span>
+                    )}
                   </div>
+                  {!isDateConfirmed && (
+                    <div className="mt-1.5">
+                      <ProgressBar current={match.message_count} />
+                    </div>
+                  )}
                 </div>
-                <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4 text-pink-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
