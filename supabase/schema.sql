@@ -91,8 +91,8 @@ create table messages (
   match_id      uuid references matches(id) on delete cascade,
   sender_id     uuid references profiles(id),
   content       text not null,
-  type          text default 'text' check (type in ('text','coffee_invite','system')),
-  metadata      jsonb,                  -- for coffee_invite: {spot, day, time, status}
+  type          text default 'text' check (type in ('text','system')),
+  metadata      jsonb,
   created_at    timestamptz default now()
 );
 
@@ -124,24 +124,4 @@ create trigger on_new_message
   after insert on messages
   for each row execute procedure handle_new_message();
 
--- ─── COFFEE CHATS ────────────────────────────────────────────────────────────
-create table coffee_chats (
-  id            uuid default uuid_generate_v4() primary key,
-  match_id      uuid references matches(id),
-  requester_id  uuid references profiles(id),
-  spot          text,
-  day           text,
-  time          text,
-  status        text default 'pending' check (status in ('pending','accepted','declined')),
-  created_at    timestamptz default now()
-);
 
-alter table coffee_chats enable row level security;
-create policy "Match participants can manage coffee chats"
-  on coffee_chats for all using (
-    exists (
-      select 1 from matches
-      where id = match_id
-        and (user_a = auth.uid() or user_b = auth.uid())
-    )
-  );

@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useMessages } from '@/hooks/useMessages'
-import { CoffeeChatModal } from '@/components/CoffeeChatModal'
 import { ProgressBar } from '@/components/ProgressBar'
 
 export default function ChatPage() {
@@ -12,7 +11,6 @@ export default function ChatPage() {
   const [match, setMatch] = useState<any>(null)
   const [otherProfile, setOtherProfile] = useState<any>(null)
   const [text, setText] = useState('')
-  const [showCoffee, setShowCoffee] = useState(false)
   const [showReveal, setShowReveal] = useState(false)
   const [revealCountdown, setRevealCountdown] = useState(5)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -52,6 +50,26 @@ export default function ChatPage() {
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [matchId, match])
+
+  // Auto-reveal profiles after 48 hours from first message
+  useEffect(() => {
+    if (!match?.first_message_at || match.revealed) return
+    const revealAfter = 48 * 60 * 60 * 1000 // 48 hours
+    const elapsed = Date.now() - new Date(match.first_message_at).getTime()
+
+    if (elapsed >= revealAfter) {
+      supabase.from('matches').update({ revealed: true }).eq('id', matchId).then(() => {
+        // DB update will be picked up by the match subscription and show the reveal overlay
+      }).catch(() => {})
+      return
+    }
+
+    const remaining = revealAfter - elapsed
+    const t = setTimeout(() => {
+      supabase.from('matches').update({ revealed: true }).eq('id', matchId).catch(() => {})
+    }, remaining)
+    return () => clearTimeout(t)
+  }, [match, matchId])
 
   // Countdown for reveal overlay
   useEffect(() => {
@@ -101,9 +119,8 @@ export default function ChatPage() {
   // 24h check — first_message_at must exist and be 24h+ ago
   const canProposeDate = (() => {
     if (!match || match.date_confirmed || match.date_proposed_by) return false
-    if (!match.first_message_at) return false
-    const elapsed = Date.now() - new Date(match.first_message_at).getTime()
-    return elapsed >= 24 * 60 * 60 * 1000
+    // Only allow proposing a date after profiles have been revealed
+    return !!match.revealed
   })()
 
   const iProposed = match?.date_proposed_by === userId
@@ -124,12 +141,7 @@ export default function ChatPage() {
             <p className="text-xs text-pink-400 mt-0.5">Date confirmed 💘</p>
           )}
         </div>
-        <button
-          onClick={() => setShowCoffee(true)}
-          className="text-sm text-gray-500 hover:text-gray-900 border border-gray-200 px-3 py-1.5 rounded-lg transition-colors"
-        >
-          ☕ Coffee chat
-        </button>
+        
       </div>
 
       {/* Date proposal banner */}
@@ -161,13 +173,7 @@ export default function ChatPage() {
               </div>
             )
           }
-          if (msg.type === 'coffee_invite') {
-            return (
-              <div key={msg.id} className="self-center bg-amber-50 border border-amber-100 text-amber-800 text-xs px-4 py-2 rounded-full max-w-xs text-center">
-                ☕ {msg.content}
-              </div>
-            )
-          }
+          
           return (
             <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-xs px-4 py-2.5 rounded-2xl text-sm ${
@@ -195,7 +201,7 @@ export default function ChatPage() {
 
       {/* Input */}
       <div className="px-4 py-3 bg-white border-t border-gray-100 flex gap-2">
-        <button onClick={() => setShowCoffee(true)} className="text-xl px-1">☕</button>
+        
         <input
           className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-pink-400 transition-colors"
           placeholder="Message…"
@@ -239,9 +245,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      {showCoffee && userId && (
-        <CoffeeChatModal matchId={matchId} requesterId={userId} onClose={() => setShowCoffee(false)} />
-      )}
+      
     </div>
   )
 }
