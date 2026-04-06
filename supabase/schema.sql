@@ -7,6 +7,14 @@ create table profiles (
   name          text not null,
   major         text,
   year          text,
+  birthday      date,
+  gender        text,
+  sexuality     text,
+  height        text,
+  race          text,
+  religion      text,
+  latitude      float8,
+  longitude     float8,
   interests     text[],
   prompt        text,
   prompt_answer text,
@@ -39,12 +47,15 @@ create policy "Users can read own swipes"
 
 -- ─── MATCHES ─────────────────────────────────────────────────────────────────
 create table matches (
-  id            uuid default uuid_generate_v4() primary key,
-  user_a        uuid references profiles(id),
-  user_b        uuid references profiles(id),
-  message_count int default 0,
-  revealed      boolean default false,
-  created_at    timestamptz default now(),
+  id                uuid default uuid_generate_v4() primary key,
+  user_a            uuid references profiles(id),
+  user_b            uuid references profiles(id),
+  message_count     int default 0,
+  revealed          boolean default false,
+  date_proposed_by  uuid references profiles(id),
+  date_confirmed    boolean default false,
+  first_message_at  timestamptz,
+  created_at        timestamptz default now(),
   unique(user_a, user_b)
 );
 
@@ -102,7 +113,8 @@ begin
   update matches
   set
     message_count = message_count + 1,
-    revealed = (message_count + 1) >= 5
+    revealed = (message_count + 1) >= 5,
+    first_message_at = coalesce(first_message_at, now())
   where id = NEW.match_id;
   return NEW;
 end;

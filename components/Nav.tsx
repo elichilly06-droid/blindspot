@@ -21,7 +21,7 @@ export default function Nav() {
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
-      <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div className="w-full px-6 py-3 flex items-center justify-between">
         <span className="text-xl font-black text-pink-500 tracking-tight">blindspot</span>
         <div className="flex items-center gap-6">
           {links.map(({ href, label }) => (
