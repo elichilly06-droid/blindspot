@@ -9,6 +9,19 @@ import { Tag } from '@/components/Tag'
 const GENDERS = ['Man', 'Woman', 'Non-binary']
 const SEXUALITIES = ['Straight', 'Gay', 'Lesbian', 'Bisexual', 'Pansexual', 'Asexual', 'Queer', 'Prefer not to say']
 const RACES = ['Asian', 'Black / African American', 'Hispanic / Latino', 'Middle Eastern', 'Native American', 'Pacific Islander', 'White / Caucasian', 'Mixed / Multiracial', 'Prefer not to say']
+const RELIGIONS = ['Christian', 'Catholic', 'Jewish', 'Muslim', 'Hindu', 'Buddhist', 'Spiritual', 'Agnostic', 'Atheist', 'Other', 'Prefer not to say']
+const INTERESTS = [
+  'Hiking', 'Running', 'Gym', 'Yoga', 'Cycling', 'Swimming',
+  'Rock Climbing', 'Boxing', 'Soccer', 'Basketball', 'Tennis', 'Skiing',
+  'Surfing', 'Skateboarding', 'Camping',
+  'Coffee', 'Brunch', 'Wine', 'Cocktails', 'Karaoke',
+  'Dancing', 'Board Games', 'Comedy Shows', 'Concerts',
+  'Art', 'Photography', 'Writing', 'Design', 'Fashion', 'DIY', 'Pottery',
+  'Film', 'Netflix', 'Anime', 'Theater', 'Podcasts', 'Gaming',
+  'Books', 'Meditation', 'Astrology', 'Philosophy', 'Chess', 'Language Learning',
+  'Cooking', 'Baking', 'Foodie',
+  'Music', 'Travel', 'Startups', 'Volunteering',
+]
 const HEIGHTS: string[] = []
 for (let ft = 4; ft <= 7; ft++) {
   const maxIn = ft === 7 ? 0 : 11
@@ -41,6 +54,7 @@ export default function ProfilePage() {
   const [sexuality, setSexuality] = useState('')
   const [height, setHeight] = useState('')
   const [race, setRace] = useState('')
+  const [religion, setReligion] = useState('')
   const [promptAnswer, setPromptAnswer] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -54,13 +68,14 @@ export default function ProfilePage() {
       setSexuality(profile.sexuality ?? '')
       setHeight(profile.height ?? '')
       setRace(profile.race ?? '')
+      setReligion(profile.religion ?? '')
       setPromptAnswer(profile.prompt_answer ?? '')
     }
   }, [profile])
 
   const save = async () => {
     setSaving(true)
-    const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, prompt_answer: promptAnswer })
+    const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, prompt_answer: promptAnswer })
     if (error) setError(error.message)
     else setEditing(false)
     setSaving(false)
@@ -124,6 +139,13 @@ export default function ProfilePage() {
               </div>
             </div>
 
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Religion</p>
+              <div className="flex flex-wrap gap-2">
+                {RELIGIONS.map(r => <Chip key={r} label={r} selected={religion === r} onClick={() => setReligion(r)} />)}
+              </div>
+            </div>
+
             {profile.prompt && (
               <>
                 <p className="text-xs text-gray-400 italic px-1">{profile.prompt}</p>
@@ -145,11 +167,12 @@ export default function ProfilePage() {
               {[profile.major, profile.year, profile.height].filter(Boolean).join(' · ')}
             </div>
 
-            {(profile.gender || profile.sexuality || profile.race) && (
+            {(profile.gender || profile.sexuality || profile.race || profile.religion) && (
               <div className="flex flex-wrap gap-1.5 justify-center">
                 {profile.gender && <Tag label={profile.gender} />}
                 {profile.sexuality && <Tag label={profile.sexuality} />}
                 {profile.race && <Tag label={profile.race} />}
+                {profile.religion && <Tag label={profile.religion} />}
               </div>
             )}
 

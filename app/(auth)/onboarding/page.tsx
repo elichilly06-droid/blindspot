@@ -11,8 +11,29 @@ const PROMPTS = [
 ]
 
 const INTERESTS = [
-  'Hiking', 'Coffee', 'Film', 'Music', 'Startups', 'Gaming',
-  'Cooking', 'Running', 'Art', 'Travel', 'Books', 'Fitness',
+  // Active
+  'Hiking', 'Running', 'Gym', 'Yoga', 'Cycling', 'Swimming',
+  'Rock Climbing', 'Boxing', 'Soccer', 'Basketball', 'Tennis', 'Skiing',
+  'Surfing', 'Skateboarding', 'Camping',
+  // Social
+  'Coffee', 'Brunch', 'Wine', 'Cocktails', 'Karaoke',
+  'Dancing', 'Board Games', 'Comedy Shows', 'Concerts',
+  // Creative
+  'Art', 'Photography', 'Writing', 'Design', 'Fashion', 'DIY', 'Pottery',
+  // Entertainment
+  'Film', 'Netflix', 'Anime', 'Theater', 'Podcasts', 'Gaming',
+  // Mind & Culture
+  'Books', 'Meditation', 'Astrology', 'Philosophy', 'Chess',
+  'Language Learning',
+  // Food
+  'Cooking', 'Baking', 'Foodie',
+  // Career
+  'Music', 'Travel', 'Startups', 'Volunteering',
+]
+
+const RELIGIONS = [
+  'Christian', 'Catholic', 'Jewish', 'Muslim', 'Hindu',
+  'Buddhist', 'Spiritual', 'Agnostic', 'Atheist', 'Other', 'Prefer not to say',
 ]
 
 const GENDERS = ['Man', 'Woman', 'Non-binary']
@@ -74,6 +95,7 @@ export default function OnboardingPage() {
   const [sexuality, setSexuality] = useState('')
   const [height, setHeight] = useState('')
   const [race, setRace] = useState('')
+  const [religion, setReligion] = useState('')
   const [interests, setInterests] = useState<string[]>([])
   const [promptIndex, setPromptIndex] = useState(0)
   const [promptAnswer, setPromptAnswer] = useState('')
@@ -106,6 +128,7 @@ export default function OnboardingPage() {
         sexuality: sexuality || null,
         height: height || null,
         race: race || null,
+        religion: religion || null,
         interests,
         prompt: PROMPTS[promptIndex],
         prompt_answer: promptAnswer,
@@ -215,6 +238,15 @@ export default function OnboardingPage() {
                 <div className="flex flex-wrap gap-2">
                   {RACES.map(r => (
                     <Chip key={r} label={r} selected={race === r} onClick={() => setRace(r)} />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Religion</p>
+                <div className="flex flex-wrap gap-2">
+                  {RELIGIONS.map(r => (
+                    <Chip key={r} label={r} selected={religion === r} onClick={() => setReligion(r)} />
                   ))}
                 </div>
               </div>
