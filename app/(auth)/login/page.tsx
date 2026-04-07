@@ -25,7 +25,7 @@ export default function LoginPage() {
           redirectTo: `${window.location.origin}/reset-password`,
         })
         // Always show success to avoid leaking whether email exists
-        setSuccess('If that email is registered, you'll receive a reset link shortly.')
+        setSuccess("If that email is registered, you'll receive a reset link shortly.")
       } else {
         if (isSignUp) {
           const { data, error } = await signUp(email, password)

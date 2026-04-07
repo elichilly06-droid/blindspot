@@ -58,13 +58,13 @@ export default function ChatPage() {
     const elapsed = Date.now() - new Date(match.first_message_at).getTime()
 
     if (elapsed >= revealAfter) {
-      supabase.from('matches').update({ revealed: true }).eq('id', matchId).then(() => {})
+      supabase.from('matches').update({ revealed: true }).eq('id', matchId)
       return
     }
 
     const remaining = revealAfter - elapsed
     const t = setTimeout(() => {
-      supabase.from('matches').update({ revealed: true }).eq('id', matchId).then(() => {})
+      supabase.from('matches').update({ revealed: true }).eq('id', matchId)
     }, remaining)
     return () => clearTimeout(t)
   }, [match, matchId])
