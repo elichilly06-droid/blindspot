@@ -115,7 +115,6 @@ begin
   update matches
   set
     message_count = message_count + 1,
-    revealed = (message_count + 1) >= 5,
     first_message_at = coalesce(first_message_at, now())
   where id = NEW.match_id;
   return NEW;

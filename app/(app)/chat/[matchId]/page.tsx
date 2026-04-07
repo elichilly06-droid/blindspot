@@ -132,9 +132,9 @@ export default function ChatPage() {
       <div className="px-4 py-3 bg-white border-b border-gray-100 flex items-center justify-between">
         <div>
           <p className="font-semibold text-pink-600">{otherProfile?.name ?? '???'}</p>
-          {match && !match.date_confirmed && (
+          {match && !match.revealed && !match.date_confirmed && (
             <div className="w-48 mt-1">
-              <ProgressBar current={match.message_count} />
+              <ProgressBar firstMessageAt={match.first_message_at ?? null} />
             </div>
           )}
           {match?.date_confirmed && (
