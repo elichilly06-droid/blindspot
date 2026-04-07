@@ -6,6 +6,29 @@ import { useProfile } from '@/hooks/useProfile'
 import { Avatar } from '@/components/Avatar'
 import { Tag } from '@/components/Tag'
 
+const PROMPTS = [
+  "A life goal of mine…",
+  "My love language is…",
+  "We'll get along if…",
+  "I go crazy for…",
+  "The way to win me over…",
+  "My most irrational fear…",
+  "I'm weirdly attracted to…",
+  "A shower thought I recently had…",
+  "Two truths and a lie…",
+  "I know the best spot in town for…",
+  "Never have I ever…",
+  "My simple pleasures…",
+  "Green flags I look for…",
+  "I'm looking for someone who…",
+  "Worst idea I've ever had…",
+  "Change my mind about…",
+  "My therapist would say…",
+  "A fun fact about me…",
+  "I'm convinced that…",
+  "People are surprised when they find out…",
+]
+
 const GENDERS = ['Man', 'Woman', 'Non-binary']
 const SEXUALITIES = ['Straight', 'Gay', 'Lesbian', 'Bisexual', 'Pansexual', 'Asexual', 'Queer', 'Prefer not to say']
 const RACES = ['Asian', 'Black / African American', 'Hispanic / Latino', 'Middle Eastern', 'Native American', 'Pacific Islander', 'White / Caucasian', 'Mixed / Multiracial', 'Prefer not to say']
@@ -55,6 +78,7 @@ export default function ProfilePage() {
   const [height, setHeight] = useState('')
   const [race, setRace] = useState('')
   const [religion, setReligion] = useState('')
+  const [selectedPrompt, setSelectedPrompt] = useState('')
   const [promptAnswer, setPromptAnswer] = useState('')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState('')
@@ -71,6 +95,7 @@ export default function ProfilePage() {
       setHeight(profile.height ?? '')
       setRace(profile.race ?? '')
       setReligion(profile.religion ?? '')
+      setSelectedPrompt(profile.prompt ?? PROMPTS[0])
       setPromptAnswer(profile.prompt_answer ?? '')
     }
   }, [profile])
@@ -103,7 +128,7 @@ export default function ProfilePage() {
         photo_url = urlData.publicUrl
       }
 
-      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, prompt_answer: promptAnswer, photo_url })
+      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, prompt: selectedPrompt, prompt_answer: promptAnswer, photo_url })
       if (error) setError(error.message)
       else { setEditing(false); setPhotoFile(null); setPhotoPreview('') }
     } finally {
@@ -188,13 +213,19 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {profile.prompt && (
-              <>
-                <p className="text-xs text-gray-400 italic px-1">{profile.prompt}</p>
-                <textarea className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-pink-400 resize-none"
-                  rows={3} value={promptAnswer} onChange={e => setPromptAnswer(e.target.value)} />
-              </>
-            )}
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Prompt</p>
+              <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto mb-2">
+                {PROMPTS.map(p => (
+                  <button key={p} type="button" onClick={() => setSelectedPrompt(p)}
+                    className={`text-left px-3 py-2 rounded-xl text-sm border transition-colors ${selectedPrompt === p ? 'border-pink-400 bg-pink-50 text-pink-800' : 'border-gray-200 text-gray-600 hover:border-gray-400'}`}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+              <textarea className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-pink-400 resize-none w-full"
+                rows={3} placeholder="Your answer…" value={promptAnswer} onChange={e => setPromptAnswer(e.target.value)} />
+            </div>
 
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button onClick={save} disabled={saving}

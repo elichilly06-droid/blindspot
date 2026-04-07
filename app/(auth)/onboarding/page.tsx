@@ -4,10 +4,26 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 const PROMPTS = [
-  'My ideal Sunday looks like…',
-  'A fun fact about me is…',
+  "A life goal of mine…",
+  "My love language is…",
+  "We'll get along if…",
+  "I go crazy for…",
+  "The way to win me over…",
+  "My most irrational fear…",
+  "I'm weirdly attracted to…",
+  "A shower thought I recently had…",
+  "Two truths and a lie…",
+  "I know the best spot in town for…",
+  "Never have I ever…",
+  "My simple pleasures…",
+  "Green flags I look for…",
+  "I'm looking for someone who…",
+  "Worst idea I've ever had…",
+  "Change my mind about…",
+  "My therapist would say…",
+  "A fun fact about me…",
   "I'm convinced that…",
-  'People are surprised when they find out…',
+  "People are surprised when they find out…",
 ]
 
 const INTERESTS = [
