@@ -68,8 +68,9 @@ export default function ProfilePage() {
   const [religion, setReligion] = useState('')
   const [selectedPrompt, setSelectedPrompt] = useState('')
   const [promptAnswer, setPromptAnswer] = useState('')
-  const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState('')
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const [photoError, setPhotoError] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -88,36 +89,42 @@ export default function ProfilePage() {
     }
   }, [profile])
 
-  const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload immediately on file pick — no Save needed for photo
+  const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file) return
-    setPhotoFile(file)
+    if (!file || !userId) return
+    setPhotoUploading(true)
+    setPhotoError('')
     setPhotoPreview(URL.createObjectURL(file))
+    try {
+      const storagePath = `${userId}/avatar`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(storagePath, file, { upsert: true, contentType: file.type })
+      if (uploadError) {
+        setPhotoError('Upload failed: ' + uploadError.message)
+        setPhotoPreview('')
+        return
+      }
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storagePath)
+      const photo_url = `${urlData.publicUrl}?t=${Date.now()}`
+      const { error: saveError } = await updateProfile({ photo_url })
+      if (saveError) {
+        setPhotoError('Save failed: ' + saveError.message)
+        setPhotoPreview('')
+      }
+    } finally {
+      setPhotoUploading(false)
+    }
   }
 
   const save = async () => {
     setSaving(true)
     setError('')
     try {
-      let photo_url = profile.photo_url
-
-      if (photoFile && userId) {
-        const storagePath = `${userId}/avatar`
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(storagePath, photoFile, { upsert: true, contentType: photoFile.type })
-        if (uploadError) {
-          setError('Photo upload failed: ' + uploadError.message)
-          setSaving(false)
-          return
-        }
-        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storagePath)
-        photo_url = `${urlData.publicUrl}?t=${Date.now()}`
-      }
-
-      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, prompt: selectedPrompt, prompt_answer: promptAnswer, photo_url })
+      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, prompt: selectedPrompt, prompt_answer: promptAnswer })
       if (error) setError(error.message)
-      else { setEditing(false); setPhotoFile(null); setPhotoPreview('') }
+      else setEditing(false)
     } finally {
       setSaving(false)
     }
@@ -129,6 +136,8 @@ export default function ProfilePage() {
     </div>
   )
 
+  const displayPhoto = photoPreview || profile.photo_url
+
   return (
     <div className="max-w-md mx-auto">
       <div className="flex items-center gap-3 mb-6">
@@ -137,19 +146,23 @@ export default function ProfilePage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        <div className="flex flex-col items-center gap-3 mb-6">
-          {editing ? (
-            <label className="cursor-pointer relative">
-              <input type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
-              {photoPreview ? (
-                <img src={photoPreview} className="w-24 h-24 rounded-full object-cover border-4 border-pink-300" alt="" />
-              ) : (
-                <Avatar uri={profile.photo_url} size={96} revealed />
-              )}
-              <span className="absolute bottom-0 right-0 bg-pink-500 text-white text-xs rounded-full w-7 h-7 flex items-center justify-center shadow">✎</span>
-            </label>
-          ) : (
-            <Avatar uri={profile.photo_url} size={96} revealed />
+        {/* Avatar — always tappable to change photo */}
+        <div className="flex flex-col items-center gap-2 mb-6">
+          <label className="cursor-pointer relative">
+            <input type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
+            {displayPhoto ? (
+              <img src={displayPhoto} className="w-24 h-24 rounded-full object-cover border-4 border-pink-200" alt="" />
+            ) : (
+              <Avatar uri={null} size={96} revealed />
+            )}
+            <span className="absolute bottom-0 right-0 bg-pink-500 text-white text-xs rounded-full w-7 h-7 flex items-center justify-center shadow-md">
+              {photoUploading ? '…' : '✎'}
+            </span>
+          </label>
+          {photoUploading && <p className="text-xs text-pink-400">Uploading…</p>}
+          {photoError && <p className="text-xs text-red-500">{photoError}</p>}
+          {!displayPhoto && !photoUploading && (
+            <p className="text-xs text-gray-400">Tap to add a photo</p>
           )}
           {!editing && <h2 className="text-xl font-bold">{profile.name}</h2>}
         </div>
