@@ -73,13 +73,13 @@ export async function getDiscoverProfiles(userId: string, myProfile: any, limit 
   // Fetch a larger pool so we have enough after compatibility filtering
   let query = supabase
     .from('profiles')
-    .select('*')
+    .select('id, name, major, year, birthday, gender, sexuality, interests, prompt, prompt_answer, photo_url, latitude, longitude')
     .eq('is_active', true)
     .neq('id', userId)
     .limit(limit * 5)
 
   if (swipedIds.length > 0)
-    query = query.not('id', 'in', `(${swipedIds.join(',')})`)
+    query = query.not('id', 'in', `(${swipedIds.map((id: string) => `"${id}"`).join(',')})`)
 
   const { data } = await query
   if (!data) return []

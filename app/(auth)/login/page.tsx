@@ -21,23 +21,37 @@ export default function LoginPage() {
     setLoading(true)
     try {
       if (isForgot) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
         })
-        if (error) setError(error.message)
-        else setSuccess('Check your email for a password reset link.')
+        // Always show success to avoid leaking whether email exists
+        setSuccess('If that email is registered, you'll receive a reset link shortly.')
       } else {
-        const { error } = isSignUp
-          ? await signUp(email, password)
-          : await signInWithEmail(email, password)
-        if (error) {
-          setError(error.message)
+        if (isSignUp) {
+          const { data, error } = await signUp(email, password)
+          if (error) {
+            setError('Could not create account. Try a different email or check your details.')
+          } else if (!data.session) {
+            setSuccess('Check your email to confirm your account before signing in.')
+          } else {
+            router.push('/onboarding')
+          }
         } else {
-          router.push(isSignUp ? '/onboarding' : '/discover')
+          const { error } = await signInWithEmail(email, password)
+          if (error) {
+            setError('Invalid email or password.')
+          } else {
+            router.push('/discover')
+          }
         }
       }
     } catch (e: any) {
-      setError(e.message)
+      // Keep domain restriction message since it's intentional UX
+      if (e.message?.includes('northeastern.edu')) {
+        setError(e.message)
+      } else {
+        setError('Something went wrong. Please try again.')
+      }
     } finally {
       setLoading(false)
     }

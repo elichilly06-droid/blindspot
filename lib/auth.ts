@@ -11,5 +11,6 @@ export async function signInWithEmail(email: string, password: string) {
 export async function signUp(email: string, password: string) {
   if (!email.endsWith(`@${ALLOWED_DOMAIN}`))
     throw new Error('Only @northeastern.edu accounts are allowed')
-  return supabase.auth.signUp({ email, password })
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  return { data, error }
 }

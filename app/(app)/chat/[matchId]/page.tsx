@@ -28,7 +28,7 @@ export default function ChatPage() {
       // Fetch the other person's profile
       const otherId = data?.user_a === userId ? data?.user_b : data?.user_a
       if (otherId) {
-        supabase.from('profiles').select('*').eq('id', otherId).single().then(({ data: p }) => setOtherProfile(p))
+        supabase.from('profiles').select('id, name, photo_url').eq('id', otherId).single().then(({ data: p }) => setOtherProfile(p))
       }
     })
   }, [matchId, userId])
