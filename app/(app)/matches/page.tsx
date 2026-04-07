@@ -49,10 +49,13 @@ export default function MatchesPage() {
                       <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Date proposed</span>
                     )}
                   </div>
-                  {!isDateConfirmed && (
+                  {!isDateConfirmed && !match.revealed && (
                     <div className="mt-1.5">
-                      <ProgressBar current={match.message_count} />
+                      <ProgressBar firstMessageAt={match.first_message_at ?? null} />
                     </div>
+                  )}
+                  {match.revealed && !isDateConfirmed && (
+                    <p className="text-xs text-pink-400 mt-0.5">Photos revealed — propose a date?</p>
                   )}
                 </div>
                 <svg className="w-4 h-4 text-pink-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">

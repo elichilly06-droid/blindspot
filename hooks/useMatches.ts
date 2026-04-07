@@ -9,9 +9,9 @@ export function useMatches(userId: string) {
     if (!userId) return
 
     const fetch = async () => {
-      const { data } = await supabase
+      const { data } = await (supabase
         .from('matches')
-        .select('id, user_a, user_b, message_count, revealed, date_proposed_by, date_confirmed, created_at, user_a:profiles!user_a(id, name, photo_url), user_b:profiles!user_b(id, name, photo_url)')
+        .select('id, user_a, user_b, message_count, revealed, first_message_at, date_proposed_by, date_confirmed, created_at, user_a:profiles!user_a(id, name, photo_url), user_b:profiles!user_b(id, name, photo_url)') as any)
         .or(`user_a.eq.${userId},user_b.eq.${userId}`)
         .order('created_at', { ascending: false })
       setMatches(data ?? [])
