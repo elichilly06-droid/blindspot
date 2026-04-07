@@ -56,6 +56,8 @@ export default function ProfilePage() {
   const [race, setRace] = useState('')
   const [religion, setReligion] = useState('')
   const [promptAnswer, setPromptAnswer] = useState('')
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -73,12 +75,40 @@ export default function ProfilePage() {
     }
   }, [profile])
 
+  const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPhotoFile(file)
+    setPhotoPreview(URL.createObjectURL(file))
+  }
+
   const save = async () => {
     setSaving(true)
-    const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, prompt_answer: promptAnswer })
-    if (error) setError(error.message)
-    else setEditing(false)
-    setSaving(false)
+    setError('')
+    try {
+      let photo_url = profile.photo_url
+
+      if (photoFile && userId) {
+        const ext = photoFile.name.split('.').pop() ?? 'jpg'
+        const storagePath = `${userId}/avatar.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(storagePath, photoFile, { upsert: true })
+        if (uploadError) {
+          setError('Photo upload failed: ' + uploadError.message)
+          setSaving(false)
+          return
+        }
+        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storagePath)
+        photo_url = urlData.publicUrl
+      }
+
+      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, prompt_answer: promptAnswer, photo_url })
+      if (error) setError(error.message)
+      else { setEditing(false); setPhotoFile(null); setPhotoPreview('') }
+    } finally {
+      setSaving(false)
+    }
   }
 
   if (loading || !profile) return (
@@ -96,7 +126,19 @@ export default function ProfilePage() {
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <div className="flex flex-col items-center gap-3 mb-6">
-          <Avatar uri={profile.photo_url} size={96} revealed />
+          {editing ? (
+            <label className="cursor-pointer relative">
+              <input type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
+              {photoPreview ? (
+                <img src={photoPreview} className="w-24 h-24 rounded-full object-cover border-4 border-pink-300" alt="" />
+              ) : (
+                <Avatar uri={profile.photo_url} size={96} revealed />
+              )}
+              <span className="absolute bottom-0 right-0 bg-pink-500 text-white text-xs rounded-full w-7 h-7 flex items-center justify-center shadow">✎</span>
+            </label>
+          ) : (
+            <Avatar uri={profile.photo_url} size={96} revealed />
+          )}
           {!editing && <h2 className="text-xl font-bold">{profile.name}</h2>}
         </div>
 
