@@ -58,15 +58,13 @@ export default function ChatPage() {
     const elapsed = Date.now() - new Date(match.first_message_at).getTime()
 
     if (elapsed >= revealAfter) {
-      supabase.from('matches').update({ revealed: true }).eq('id', matchId).then(() => {
-        // DB update will be picked up by the match subscription and show the reveal overlay
-      }).catch(() => {})
+      supabase.from('matches').update({ revealed: true }).eq('id', matchId).then(() => {})
       return
     }
 
     const remaining = revealAfter - elapsed
     const t = setTimeout(() => {
-      supabase.from('matches').update({ revealed: true }).eq('id', matchId).catch(() => {})
+      supabase.from('matches').update({ revealed: true }).eq('id', matchId).then(() => {})
     }, remaining)
     return () => clearTimeout(t)
   }, [match, matchId])
@@ -98,30 +96,28 @@ export default function ChatPage() {
   const proposeDate = async () => {
     if (!userId) return
     await supabase.from('matches').update({ date_proposed_by: userId }).eq('id', matchId)
-    await sendMessage(userId, '💘 wants to go on a date — share photos & meet up?', 'system', { kind: 'date_request', status: 'pending' })
+    await sendMessage(userId, '💘 proposed a date!', 'system', { kind: 'date_request' })
     setMatch((m: any) => ({ ...m, date_proposed_by: userId }))
+  }
+
+  const cancelProposal = async () => {
+    if (!userId) return
+    await supabase.from('matches').update({ date_proposed_by: null }).eq('id', matchId)
+    setMatch((m: any) => ({ ...m, date_proposed_by: null }))
   }
 
   const acceptDate = async () => {
     if (!userId) return
-    await supabase.from('matches').update({ revealed: true, date_confirmed: true, date_proposed_by: null }).eq('id', matchId)
-    await sendMessage(userId, '🎉 Date confirmed! Photos revealed.', 'system', { kind: 'date_accepted' })
-    setShowReveal(true)
+    await supabase.from('matches').update({ date_confirmed: true, date_proposed_by: null }).eq('id', matchId)
+    await sendMessage(userId, "🎉 It's a date!", 'system', { kind: 'date_accepted' })
   }
 
   const declineDate = async () => {
     if (!userId) return
     await supabase.from('matches').update({ date_proposed_by: null }).eq('id', matchId)
-    await sendMessage(userId, 'Declined the date request.', 'system', { kind: 'date_declined' })
+    await sendMessage(userId, 'Declined the date.', 'system', { kind: 'date_declined' })
     setMatch((m: any) => ({ ...m, date_proposed_by: null }))
   }
-
-  // 24h check — first_message_at must exist and be 24h+ ago
-  const canProposeDate = (() => {
-    if (!match || match.date_confirmed || match.date_proposed_by) return false
-    // Only allow proposing a date after profiles have been revealed
-    return !!match.revealed
-  })()
 
   const iProposed = match?.date_proposed_by === userId
   const theyProposed = match?.date_proposed_by && match?.date_proposed_by !== userId
@@ -144,21 +140,6 @@ export default function ChatPage() {
         
       </div>
 
-      {/* Date proposal banner */}
-      {theyProposed && !match.date_confirmed && (
-        <div className="bg-pink-50 border-b border-pink-100 px-4 py-3 flex items-center justify-between gap-3">
-          <p className="text-sm text-pink-700 font-medium">💘 They want to go on a date — share photos & meet up?</p>
-          <div className="flex gap-2 flex-shrink-0">
-            <button onClick={acceptDate} className="bg-pink-500 text-white text-xs px-3 py-1.5 rounded-full font-semibold">Accept</button>
-            <button onClick={declineDate} className="border border-gray-200 text-gray-500 text-xs px-3 py-1.5 rounded-full">Decline</button>
-          </div>
-        </div>
-      )}
-      {iProposed && !match.date_confirmed && (
-        <div className="bg-pink-50 border-b border-pink-100 px-4 py-3 text-center text-sm text-pink-500">
-          💘 Date proposed — waiting for them to accept…
-        </div>
-      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2">
@@ -187,36 +168,55 @@ export default function ChatPage() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Propose date button */}
-      {canProposeDate && (
-        <div className="px-4 py-2 bg-pink-50 border-t border-pink-100 text-center">
+      {/* Bottom action area */}
+      {match?.date_confirmed ? (
+        <div className="px-4 py-5 bg-pink-50 border-t border-pink-100 text-center">
+          <p className="text-pink-600 font-semibold">It's a date! 💘</p>
+          <p className="text-xs text-pink-400 mt-1">Exchange details and make it happen</p>
+        </div>
+      ) : match?.revealed ? (
+        <div className="px-4 py-4 bg-white border-t border-gray-100">
+          {!match.date_proposed_by ? (
+            <div className="text-center flex flex-col gap-3">
+              <p className="text-sm text-gray-500">Photos are out — ready to meet?</p>
+              <button onClick={proposeDate}
+                className="w-full bg-pink-500 text-white py-3 rounded-full font-semibold text-sm">
+                💘 Propose a date
+              </button>
+            </div>
+          ) : iProposed ? (
+            <div className="text-center flex flex-col gap-2">
+              <p className="text-sm text-pink-500 font-medium">💘 Date proposed — waiting for them…</p>
+              <button onClick={cancelProposal} className="text-xs text-gray-400 underline">Cancel</button>
+            </div>
+          ) : theyProposed ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-sm text-pink-700 font-medium text-center">💘 They want to go on a date!</p>
+              <div className="flex gap-2">
+                <button onClick={acceptDate} className="flex-1 bg-pink-500 text-white py-3 rounded-full font-semibold text-sm">Accept</button>
+                <button onClick={declineDate} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-full text-sm">Decline</button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="px-4 py-3 bg-white border-t border-gray-100 flex gap-2">
+          <input
+            className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-pink-400 transition-colors"
+            placeholder="Message…"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && send()}
+          />
           <button
-            onClick={proposeDate}
-            className="text-sm text-pink-600 font-semibold hover:text-pink-800 transition-colors"
+            onClick={send}
+            disabled={!text.trim()}
+            className="bg-pink-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold disabled:opacity-40 transition-opacity"
           >
-            💘 Propose a date — share photos & meet up?
+            Send
           </button>
         </div>
       )}
-
-      {/* Input */}
-      <div className="px-4 py-3 bg-white border-t border-gray-100 flex gap-2">
-        
-        <input
-          className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-pink-400 transition-colors"
-          placeholder="Message…"
-          value={text}
-          onChange={e => setText(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && send()}
-        />
-        <button
-          onClick={send}
-          disabled={!text.trim()}
-          className="bg-pink-500 text-white px-5 py-2.5 rounded-full text-sm font-semibold disabled:opacity-40 transition-opacity"
-        >
-          Send
-        </button>
-      </div>
 
       {/* Photo reveal overlay */}
       {showReveal && (
