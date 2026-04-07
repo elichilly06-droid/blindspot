@@ -33,18 +33,6 @@ const GENDERS = ['Man', 'Woman', 'Non-binary']
 const SEXUALITIES = ['Straight', 'Gay', 'Lesbian', 'Bisexual', 'Pansexual', 'Asexual', 'Queer', 'Prefer not to say']
 const RACES = ['Asian', 'Black / African American', 'Hispanic / Latino', 'Middle Eastern', 'Native American', 'Pacific Islander', 'White / Caucasian', 'Mixed / Multiracial', 'Prefer not to say']
 const RELIGIONS = ['Christian', 'Catholic', 'Jewish', 'Muslim', 'Hindu', 'Buddhist', 'Spiritual', 'Agnostic', 'Atheist', 'Other', 'Prefer not to say']
-const INTERESTS = [
-  'Hiking', 'Running', 'Gym', 'Yoga', 'Cycling', 'Swimming',
-  'Rock Climbing', 'Boxing', 'Soccer', 'Basketball', 'Tennis', 'Skiing',
-  'Surfing', 'Skateboarding', 'Camping',
-  'Coffee', 'Brunch', 'Wine', 'Cocktails', 'Karaoke',
-  'Dancing', 'Board Games', 'Comedy Shows', 'Concerts',
-  'Art', 'Photography', 'Writing', 'Design', 'Fashion', 'DIY', 'Pottery',
-  'Film', 'Netflix', 'Anime', 'Theater', 'Podcasts', 'Gaming',
-  'Books', 'Meditation', 'Astrology', 'Philosophy', 'Chess', 'Language Learning',
-  'Cooking', 'Baking', 'Foodie',
-  'Music', 'Travel', 'Startups', 'Volunteering',
-]
 const HEIGHTS: string[] = []
 for (let ft = 4; ft <= 7; ft++) {
   const maxIn = ft === 7 ? 0 : 11
@@ -114,18 +102,17 @@ export default function ProfilePage() {
       let photo_url = profile.photo_url
 
       if (photoFile && userId) {
-        const ext = photoFile.name.split('.').pop() ?? 'jpg'
-        const storagePath = `${userId}/avatar.${ext}`
+        const storagePath = `${userId}/avatar`
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(storagePath, photoFile, { upsert: true })
+          .upload(storagePath, photoFile, { upsert: true, contentType: photoFile.type })
         if (uploadError) {
           setError('Photo upload failed: ' + uploadError.message)
           setSaving(false)
           return
         }
         const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storagePath)
-        photo_url = urlData.publicUrl
+        photo_url = `${urlData.publicUrl}?t=${Date.now()}`
       }
 
       const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, prompt: selectedPrompt, prompt_answer: promptAnswer, photo_url })

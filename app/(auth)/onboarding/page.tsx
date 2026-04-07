@@ -145,19 +145,18 @@ export default function OnboardingPage() {
         return
       }
 
-      // Upload photo to Supabase Storage
-      const ext = photoFile.name.split('.').pop() ?? 'jpg'
-      const storagePath = `${user.id}/avatar.${ext}`
+      // Upload photo to Supabase Storage (fixed path so re-uploads overwrite cleanly)
+      const storagePath = `${user.id}/avatar`
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(storagePath, photoFile, { upsert: true })
+        .upload(storagePath, photoFile, { upsert: true, contentType: photoFile.type })
       if (uploadError) {
         setError('Photo upload failed: ' + uploadError.message)
         setSaving(false)
         return
       }
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storagePath)
-      const photoUrl = urlData.publicUrl
+      const photoUrl = `${urlData.publicUrl}?t=${Date.now()}`
 
       const coords = await getCoords()
 
