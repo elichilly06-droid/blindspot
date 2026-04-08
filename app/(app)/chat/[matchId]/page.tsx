@@ -15,6 +15,7 @@ export default function ChatPage() {
   const [showReveal, setShowReveal] = useState(false)
   const [revealCountdown, setRevealCountdown] = useState(5)
   const [showReport, setShowReport] = useState(false)
+  const [myPhone, setMyPhone] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { messages, sendMessage } = useMessages(matchId)
@@ -123,6 +124,9 @@ export default function ChatPage() {
 
   const iProposed = match?.date_proposed_by === userId
   const theyProposed = match?.date_proposed_by && match?.date_proposed_by !== userId
+  const EXPIRY_MS = 48 * 60 * 60 * 1000
+  const matchExpired = match && !match.first_message_at && match.message_count === 0 &&
+    Date.now() - new Date(match.created_at).getTime() > EXPIRY_MS
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] -mt-8 -mx-4">
@@ -175,10 +179,29 @@ export default function ChatPage() {
       </div>
 
       {/* Bottom action area */}
-      {match?.date_confirmed ? (
+      {matchExpired ? (
         <div className="px-6 py-4 bg-white border-t border-gray-100 text-center">
-          <p className="text-sm font-medium text-gray-800">You're going on a date</p>
-          <p className="text-xs text-gray-400 mt-0.5">Share your number and make it happen</p>
+          <p className="text-sm text-gray-400">This match expired — neither of you sent a message in time.</p>
+        </div>
+      ) : match?.date_confirmed ? (
+        <div className="px-4 py-3 bg-white border-t border-gray-100">
+          <p className="text-sm font-medium text-gray-800 mb-2">You're going on a date — share your number</p>
+          <div className="flex gap-2">
+            <input
+              className="flex-1 border border-gray-200 rounded-full px-4 py-2 text-sm outline-none focus:border-pink-400 transition-colors"
+              placeholder="Your number…"
+              value={myPhone}
+              onChange={e => setMyPhone(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && myPhone.trim() && userId) { sendMessage(userId, `My number: ${myPhone.trim()}`, 'system', { kind: 'phone_share' }); setMyPhone('') } }}
+            />
+            <button
+              disabled={!myPhone.trim()}
+              onClick={() => { if (myPhone.trim() && userId) { sendMessage(userId, `My number: ${myPhone.trim()}`, 'system', { kind: 'phone_share' }); setMyPhone('') } }}
+              className="bg-pink-500 text-white px-4 py-2 rounded-full text-sm font-medium disabled:opacity-40"
+            >
+              Share
+            </button>
+          </div>
         </div>
       ) : match?.revealed ? (
         <div className="px-6 py-4 bg-white border-t border-gray-100">

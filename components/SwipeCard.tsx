@@ -22,9 +22,10 @@ interface SwipeCardProps {
   distance: number | null
   onSwipeLeft: () => void
   onSwipeRight: () => void
+  draggable?: boolean
 }
 
-export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRight }: SwipeCardProps) {
+export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRight, draggable = true }: SwipeCardProps) {
   const x = useMotionValue(0)
   const rotate = useTransform(x, [-200, 200], [-18, 18])
   const likeOpacity = useTransform(x, [20, 100], [0, 1])
@@ -45,16 +46,16 @@ export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRig
 
   return (
     <motion.div
-      style={{ x, rotate }}
-      drag="x"
+      style={{ x: draggable ? x : undefined, rotate: draggable ? rotate : undefined }}
+      drag={draggable ? 'x' : false}
       dragConstraints={{ left: 0, right: 0 }}
       dragElastic={0.9}
-      onDragEnd={(_, info) => {
+      onDragEnd={draggable ? (_, info) => {
         if (info.offset.x > 100) onSwipeRight()
         else if (info.offset.x < -100) onSwipeLeft()
-      }}
-      whileDrag={{ cursor: 'grabbing' }}
-      className="bg-white rounded-3xl shadow-xl cursor-grab select-none w-full max-w-sm overflow-hidden"
+      } : undefined}
+      whileDrag={draggable ? { cursor: 'grabbing' } : undefined}
+      className={`bg-white rounded-3xl shadow-xl select-none w-full max-w-sm overflow-hidden ${draggable ? 'cursor-grab' : ''}`}
     >
       {/* Photo */}
       <div className="relative h-56 bg-gray-200">

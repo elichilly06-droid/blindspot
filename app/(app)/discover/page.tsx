@@ -13,6 +13,7 @@ export default function DiscoverPage() {
 
   const [pendingUser, setPendingUser] = useState<any>(null)
   const [pendingMe, setPendingMe] = useState<any>(null)
+  const [lastSwiped, setLastSwiped] = useState<{ profile: any; direction: 'left' | 'right' } | null>(null)
 
   const loadProfiles = useCallback(async (user: any, me: any) => {
     setMyProfile(me)
@@ -72,9 +73,18 @@ export default function DiscoverPage() {
 
   const handleSwipe = useCallback(async (direction: 'left' | 'right') => {
     if (!userId || profiles.length === 0) return
-    await recordSwipe(userId, profiles[0].id, direction)
+    const swiped = profiles[0]
+    await recordSwipe(userId, swiped.id, direction)
+    setLastSwiped({ profile: swiped, direction })
     setProfiles(prev => prev.slice(1))
   }, [userId, profiles])
+
+  const handleUndo = useCallback(async () => {
+    if (!userId || !lastSwiped) return
+    await supabase.from('swipes').delete().eq('swiper_id', userId).eq('swiped_id', lastSwiped.profile.id)
+    setProfiles(prev => [lastSwiped.profile, ...prev])
+    setLastSwiped(null)
+  }, [userId, lastSwiped])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -167,13 +177,22 @@ export default function DiscoverPage() {
       </div>
 
       {/* Buttons */}
-      <div className="flex gap-8">
+      <div className="flex gap-5 items-center">
         <button
           onClick={() => handleSwipe('left')}
           className="w-16 h-16 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-2xl hover:scale-110 transition-transform active:scale-95"
         >
           ✕
         </button>
+        {lastSwiped && (
+          <button
+            onClick={handleUndo}
+            className="w-11 h-11 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-sm hover:scale-110 transition-transform active:scale-95"
+            title="Undo last swipe"
+          >
+            ↩
+          </button>
+        )}
         <button
           onClick={() => handleSwipe('right')}
           className="w-16 h-16 rounded-full bg-white shadow-md border border-gray-100 flex items-center justify-center text-2xl hover:scale-110 transition-transform active:scale-95"

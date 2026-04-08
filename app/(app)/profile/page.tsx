@@ -7,6 +7,8 @@ import { useProfile } from '@/hooks/useProfile'
 import { Avatar } from '@/components/Avatar'
 import { Tag } from '@/components/Tag'
 import { INTERESTS } from '@/lib/interests'
+import { VALUES_QUESTIONS } from '@/lib/values'
+import { SwipeCard } from '@/components/SwipeCard'
 
 const PROMPTS = [
   // Core values & character
@@ -79,8 +81,10 @@ export default function ProfilePage() {
   const [race, setRace] = useState('')
   const [religion, setReligion] = useState('')
   const [selectedInterests, setSelectedInterests] = useState<string[]>([])
+  const [valuesAnswers, setValuesAnswers] = useState<Record<string, string>>({})
   const [selectedPrompt, setSelectedPrompt] = useState('')
   const [promptAnswer, setPromptAnswer] = useState('')
+  const [showPreview, setShowPreview] = useState(false)
   const [photoPreview, setPhotoPreview] = useState('')
   const [photoUploading, setPhotoUploading] = useState(false)
   const [photoError, setPhotoError] = useState('')
@@ -100,6 +104,7 @@ export default function ProfilePage() {
       setRace(profile.race ?? '')
       setReligion(profile.religion ?? '')
       setSelectedInterests(profile.interests ?? [])
+      setValuesAnswers(profile.values_answers ?? {})
       setSelectedPrompt(profile.prompt ?? PROMPTS[0])
       setPromptAnswer(profile.prompt_answer ?? '')
       setLocationName(profile.location_name ?? '')
@@ -176,7 +181,7 @@ export default function ProfilePage() {
     setSaving(true)
     setError('')
     try {
-      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, interests: selectedInterests, prompt: selectedPrompt, prompt_answer: promptAnswer })
+      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, interests: selectedInterests, values_answers: valuesAnswers, prompt: selectedPrompt, prompt_answer: promptAnswer })
       if (error) setError(error.message)
       else setEditing(false)
     } finally {
@@ -193,6 +198,7 @@ export default function ProfilePage() {
   const displayPhoto = photoPreview || profile.photo_url
 
   return (
+    <>
     <div className="max-w-md mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <button onClick={() => router.back()} className="text-gray-400 hover:text-gray-700 transition-colors">← Back</button>
@@ -296,6 +302,35 @@ export default function ProfilePage() {
             </div>
 
             <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+                Values
+                {Object.keys(valuesAnswers).length > 0 && (
+                  <span className="ml-1 text-pink-500 normal-case">({Object.keys(valuesAnswers).length}/{VALUES_QUESTIONS.length})</span>
+                )}
+              </p>
+              <div className="flex flex-col gap-4">
+                {VALUES_QUESTIONS.map(q => (
+                  <div key={q.id}>
+                    <p className="text-xs text-gray-600 mb-1.5">{q.question}</p>
+                    <div className="flex flex-col gap-1">
+                      {q.options.map(opt => (
+                        <button key={opt} type="button"
+                          onClick={() => setValuesAnswers(prev => ({ ...prev, [q.id]: opt }))}
+                          className={`text-left px-3 py-2 rounded-xl text-xs border transition-colors ${
+                            valuesAnswers[q.id] === opt
+                              ? 'border-pink-400 bg-pink-50 text-pink-800'
+                              : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                          }`}>
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Prompt</p>
               <div className="flex flex-col gap-1.5 max-h-48 overflow-y-auto mb-2">
                 {PROMPTS.map(p => (
@@ -347,6 +382,11 @@ export default function ProfilePage() {
               Edit profile
             </button>
 
+            <button onClick={() => setShowPreview(true)}
+              className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors">
+              Preview my card
+            </button>
+
             <Link href="/settings"
               className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors text-center block">
               Discovery settings
@@ -375,6 +415,26 @@ export default function ProfilePage() {
         )}
       </div>
     </div>
+
+    {showPreview && profile && (
+      <div className="fixed inset-0 z-50 bg-black/60 flex flex-col items-center justify-center p-6 gap-4"
+        onClick={() => setShowPreview(false)}>
+        <p className="text-white text-sm font-medium opacity-70">This is how others see you</p>
+        <div onClick={e => e.stopPropagation()} className="w-full max-w-sm">
+          <SwipeCard
+            profile={profile}
+            myValues={{}}
+            distance={null}
+            onSwipeLeft={() => setShowPreview(false)}
+            onSwipeRight={() => setShowPreview(false)}
+            draggable={false}
+          />
+        </div>
+        <button onClick={() => setShowPreview(false)}
+          className="text-white/60 text-sm mt-2">Close</button>
+      </div>
+    )}
+    </>
   )
 }
 
