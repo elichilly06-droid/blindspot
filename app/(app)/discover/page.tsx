@@ -10,7 +10,7 @@ export default function DiscoverPage() {
   const [myProfile, setMyProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showLocationPrompt, setShowLocationPrompt] = useState(false)
-  const [locationDenied, setLocationDenied] = useState(false)
+
   const [pendingUser, setPendingUser] = useState<any>(null)
   const [pendingMe, setPendingMe] = useState<any>(null)
 
@@ -29,10 +29,7 @@ export default function DiscoverPage() {
         await supabase.from('profiles').update({ latitude, longitude }).eq('id', user.id)
         await loadProfiles(user, { ...me, latitude, longitude })
       },
-      () => {
-        setLocationDenied(true)
-        loadProfiles(user, me)
-      },
+      () => { loadProfiles(user, me) },
       { timeout: 8000, enableHighAccuracy: false }
     )
   }, [loadProfiles])
@@ -61,7 +58,6 @@ export default function DiscoverPage() {
           requestLocation(user, me)
           return
         } else if (perm.state === 'denied') {
-          setLocationDenied(true)
           loadProfiles(user, me)
           return
         }
@@ -95,26 +91,28 @@ export default function DiscoverPage() {
     return haversineDistance(myProfile.latitude, myProfile.longitude, profile.latitude, profile.longitude)
   }
 
-  // Custom pre-prompt before browser asks for location
+  // Custom pre-prompt — only shows once before browser asks
   if (showLocationPrompt) return (
-    <div className="flex flex-col items-center justify-center h-64 gap-5 text-center px-6">
-      <div className="text-4xl">📍</div>
-      <div>
-        <p className="text-lg font-semibold text-gray-800">Enable location?</p>
-        <p className="text-sm text-gray-500 mt-1">blindspot uses your location to show you people nearby. Your exact location is never shared.</p>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-8">
+      <div className="w-20 h-20 bg-pink-50 rounded-full flex items-center justify-center text-4xl">📍</div>
+      <div className="flex flex-col gap-2">
+        <p className="text-xl font-bold text-gray-900">Allow location access</p>
+        <p className="text-sm text-gray-500 leading-relaxed">
+          blindspot uses your location to show you people nearby. Your exact location is never visible to anyone.
+        </p>
       </div>
-      <div className="flex flex-col gap-2 w-full max-w-xs">
+      <div className="flex flex-col gap-3 w-full max-w-xs">
         <button
           onClick={() => requestLocation(pendingUser, pendingMe)}
-          className="w-full bg-pink-500 text-white py-3 rounded-full font-semibold text-sm"
+          className="w-full bg-pink-500 text-white py-3.5 rounded-full font-semibold text-sm shadow-sm"
         >
-          Allow while using the app
+          Allow location access
         </button>
         <button
           onClick={() => { setShowLocationPrompt(false); loadProfiles(pendingUser, pendingMe) }}
-          className="w-full border border-gray-200 text-gray-500 py-3 rounded-full text-sm"
+          className="w-full text-gray-400 text-sm py-2"
         >
-          Not now
+          Skip for now
         </button>
       </div>
     </div>
@@ -139,11 +137,6 @@ export default function DiscoverPage() {
 
   return (
     <div className="flex flex-col items-center gap-6">
-      {locationDenied && (
-        <p className="text-xs text-gray-400 bg-gray-100 rounded-full px-4 py-1.5">
-          📍 Location off — matching by interests only
-        </p>
-      )}
       <p className="text-xs text-gray-400">Drag the card or use ← → arrow keys</p>
 
       {/* Card stack */}
