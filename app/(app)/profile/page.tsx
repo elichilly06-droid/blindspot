@@ -74,6 +74,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'saved' | 'error'>('idle')
+  const [locationName, setLocationName] = useState<string>('')
 
   useEffect(() => {
     if (profile) {
@@ -87,6 +88,7 @@ export default function ProfilePage() {
       setReligion(profile.religion ?? '')
       setSelectedPrompt(profile.prompt ?? PROMPTS[0])
       setPromptAnswer(profile.prompt_answer ?? '')
+      setLocationName(profile.location_name ?? '')
     }
   }, [profile])
 
@@ -141,6 +143,7 @@ export default function ProfilePage() {
         } catch { /* ignore geocoding errors */ }
 
         const { error } = await updateProfile({ latitude, longitude, location_name })
+        if (!error) setLocationName(location_name)
         setLocationStatus(error ? 'error' : 'saved')
         setTimeout(() => setLocationStatus('idle'), 3000)
       },
@@ -214,7 +217,7 @@ export default function ProfilePage() {
               ) : locationStatus === 'saved' ? (
                 <span className="text-green-500">Updated</span>
               ) : (
-                <span>{profile.location_name || (profile.latitude ? 'Update location' : 'Add location')}</span>
+                <span>{locationName || (profile.latitude ? 'Update location' : 'Add location')}</span>
               )}
             </button>
           )}
