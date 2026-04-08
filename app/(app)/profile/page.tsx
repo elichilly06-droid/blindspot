@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useProfile } from '@/hooks/useProfile'
-import { Avatar } from '@/components/Avatar'
 import { Tag } from '@/components/Tag'
 import { INTERESTS } from '@/lib/interests'
 import { VALUES_QUESTIONS } from '@/lib/values'
@@ -85,16 +84,14 @@ export default function ProfilePage() {
   const [selectedPrompt, setSelectedPrompt] = useState('')
   const [promptAnswer, setPromptAnswer] = useState('')
   const [showPreview, setShowPreview] = useState(false)
-  const [photoPreview, setPhotoPreview] = useState('')
-  const [photoUploading, setPhotoUploading] = useState(false)
+  const [allPhotos, setAllPhotos] = useState<string[]>([])
+  const [uploadingSlot, setUploadingSlot] = useState<number | null>(null)
   const [photoError, setPhotoError] = useState('')
   const [birthday, setBirthday] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'saved' | 'error'>('idle')
   const [locationName, setLocationName] = useState<string>('')
-  const [extraPhotos, setExtraPhotos] = useState<string[]>([])
-  const [photoUploading2, setPhotoUploading2] = useState(false)
 
   useEffect(() => {
     if (profile) {
@@ -112,37 +109,50 @@ export default function ProfilePage() {
       setSelectedPrompt(profile.prompt ?? PROMPTS[0])
       setPromptAnswer(profile.prompt_answer ?? '')
       setLocationName(profile.location_name ?? '')
-      setExtraPhotos(profile.photos ?? [])
+      const main = profile.photo_url ? [profile.photo_url] : []
+      const extras = (profile.photos ?? []).filter((p: string) => p !== profile.photo_url)
+      setAllPhotos([...main, ...extras].slice(0, 6))
     }
   }, [profile])
 
-  // Upload immediately on file pick — no Save needed for photo
-  const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !userId) return
-    setPhotoUploading(true)
+  const savePhotos = async (photos: string[]) => {
+    const photo_url = photos[0] ?? null
+    const extras = photos.slice(1)
+    await updateProfile({ photo_url, photos: extras })
+  }
+
+  const uploadPhotoToSlot = async (file: File) => {
+    if (!userId) return
+    const slot = allPhotos.length
+    setUploadingSlot(slot)
     setPhotoError('')
-    setPhotoPreview(URL.createObjectURL(file))
     try {
-      const storagePath = `${userId}/avatar`
+      const storagePath = `${userId}/photo_${Date.now()}`
       const { error: uploadError } = await supabase.storage
         .from('avatars')
         .upload(storagePath, file, { upsert: true, contentType: file.type })
-      if (uploadError) {
-        setPhotoError('Upload failed: ' + uploadError.message)
-        setPhotoPreview('')
-        return
-      }
+      if (uploadError) { setPhotoError('Upload failed: ' + uploadError.message); return }
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storagePath)
-      const photo_url = `${urlData.publicUrl}?t=${Date.now()}`
-      const { error: saveError } = await updateProfile({ photo_url })
-      if (saveError) {
-        setPhotoError('Save failed: ' + saveError.message)
-        setPhotoPreview('')
-      }
+      const newUrl = `${urlData.publicUrl}?t=${Date.now()}`
+      const updated = [...allPhotos, newUrl]
+      setAllPhotos(updated)
+      await savePhotos(updated)
     } finally {
-      setPhotoUploading(false)
+      setUploadingSlot(null)
     }
+  }
+
+  const removePhotoAtSlot = async (idx: number) => {
+    const updated = allPhotos.filter((_, i) => i !== idx)
+    setAllPhotos(updated)
+    await savePhotos(updated)
+  }
+
+  const setAsMain = async (idx: number) => {
+    if (idx === 0) return
+    const updated = [allPhotos[idx], ...allPhotos.filter((_, i) => i !== idx)]
+    setAllPhotos(updated)
+    await savePhotos(updated)
   }
 
   const toggleInterest = (item: string) =>
@@ -182,33 +192,6 @@ export default function ProfilePage() {
     )
   }
 
-  const pickExtraPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !userId) return
-    setPhotoUploading2(true)
-    try {
-      const idx = extraPhotos.length
-      const storagePath = `${userId}/photo_${idx}_${Date.now()}`
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(storagePath, file, { upsert: true, contentType: file.type })
-      if (uploadError) return
-      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storagePath)
-      const newUrl = `${urlData.publicUrl}?t=${Date.now()}`
-      const updated = [...extraPhotos, newUrl]
-      setExtraPhotos(updated)
-      await updateProfile({ photos: updated })
-    } finally {
-      setPhotoUploading2(false)
-    }
-  }
-
-  const removeExtraPhoto = async (url: string) => {
-    const updated = extraPhotos.filter(p => p !== url)
-    setExtraPhotos(updated)
-    await updateProfile({ photos: updated })
-  }
-
   const save = async () => {
     setSaving(true)
     setError('')
@@ -227,8 +210,6 @@ export default function ProfilePage() {
     </div>
   )
 
-  const displayPhoto = photoPreview || profile.photo_url
-
   return (
     <>
     <div className="max-w-md mx-auto">
@@ -238,45 +219,67 @@ export default function ProfilePage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        {/* Avatar + location pill */}
-        <div className="flex flex-col items-center gap-2 mb-6">
-          <label className="cursor-pointer relative">
-            <input type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
-            {displayPhoto ? (
-              <img src={displayPhoto} className="w-24 h-24 rounded-full object-cover border-4 border-pink-200" alt="" />
-            ) : (
-              <Avatar uri={null} size={96} revealed />
-            )}
-            <span className="absolute bottom-0 right-0 bg-pink-500 text-white text-xs rounded-full w-7 h-7 flex items-center justify-center shadow-md">
-              {photoUploading ? '…' : '✎'}
-            </span>
-          </label>
-          {photoError && <p className="text-xs text-red-500">{photoError}</p>}
-          {!displayPhoto && !photoUploading && (
-            <p className="text-xs text-gray-400">Tap to add a photo</p>
-          )}
-          {!editing && <h2 className="text-xl font-bold">{profile.name}</h2>}
+        {/* Photo grid — always visible, editable when in edit mode */}
+        <div className="mb-5">
+          <div className="grid grid-cols-3 gap-2">
+            {Array.from({ length: 6 }).map((_, i) => {
+              const url = allPhotos[i]
+              const isMain = i === 0
+              const isNextEmpty = i === allPhotos.length
+              if (url) {
+                return (
+                  <div key={i} className={`relative aspect-square rounded-xl overflow-hidden ${isMain ? 'ring-2 ring-pink-400' : ''}`}>
+                    <img src={url} className="w-full h-full object-cover" alt="" />
+                    {isMain && (
+                      <span className="absolute bottom-1 left-1 bg-pink-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">Main</span>
+                    )}
+                    {editing && (
+                      <>
+                        <button onClick={() => removePhotoAtSlot(i)}
+                          className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none">×</button>
+                        {!isMain && (
+                          <button onClick={() => setAsMain(i)}
+                            className="absolute bottom-1 right-1 bg-black/50 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full">Set main</button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )
+              }
+              if (!editing || !isNextEmpty) return <div key={i} className="aspect-square rounded-xl bg-gray-50" />
+              return (
+                <label key={i} className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer hover:border-pink-300 transition-colors">
+                  <input type="file" accept="image/*" className="hidden"
+                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhotoToSlot(f) }}
+                    disabled={uploadingSlot !== null} />
+                  {uploadingSlot === i ? (
+                    <div className="w-5 h-5 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <span className="text-2xl text-gray-300">+</span>
+                  )}
+                </label>
+              )
+            })}
+          </div>
+          {photoError && <p className="text-xs text-red-500 mt-2">{photoError}</p>}
+          {editing && <p className="text-xs text-gray-400 mt-2 text-center">Tap a photo to remove or set as main · up to 6 photos</p>}
+        </div>
 
-          {/* Location pill — Hinge-style, small pin + place name */}
-          {!editing && (
-            <button
-              onClick={updateLocation}
-              disabled={locationStatus === 'loading'}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-pink-500 transition-colors disabled:opacity-50"
-            >
+        {/* Name + location (view mode only) */}
+        {!editing && (
+          <div className="flex flex-col items-center gap-1 mb-4">
+            <h2 className="text-xl font-bold">{profile.name}</h2>
+            <button onClick={updateLocation} disabled={locationStatus === 'loading'}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-pink-500 transition-colors disabled:opacity-50">
               <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 flex-shrink-0">
                 <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
               </svg>
-              {locationStatus === 'loading' ? (
-                <span>Updating…</span>
-              ) : locationStatus === 'saved' ? (
-                <span className="text-green-500">Updated</span>
-              ) : (
-                <span>{locationName || (profile.latitude ? 'Update location' : 'Add location')}</span>
-              )}
+              {locationStatus === 'loading' ? <span>Updating…</span>
+                : locationStatus === 'saved' ? <span className="text-green-500">Updated</span>
+                : <span>{locationName || (profile.latitude ? 'Update location' : 'Add location')}</span>}
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         {editing ? (
           <div className="flex flex-col gap-4">
@@ -380,28 +383,6 @@ export default function ProfilePage() {
               </div>
               <textarea className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-pink-400 resize-none w-full"
                 rows={3} placeholder="Your answer…" value={promptAnswer} onChange={e => setPromptAnswer(e.target.value)} />
-            </div>
-
-            {/* Additional photos */}
-            <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Additional photos</p>
-              <div className="flex flex-wrap gap-2">
-                {extraPhotos.map((url, i) => (
-                  <div key={i} className="relative w-20 h-20">
-                    <img src={url} className="w-full h-full object-cover rounded-xl" alt="" />
-                    <button type="button" onClick={() => removeExtraPhoto(url)}
-                      className="absolute -top-1.5 -right-1.5 bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none">
-                      ×
-                    </button>
-                  </div>
-                ))}
-                {extraPhotos.length < 5 && (
-                  <label className="w-20 h-20 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center cursor-pointer hover:border-pink-300 transition-colors">
-                    <input type="file" accept="image/*" className="hidden" onChange={pickExtraPhoto} disabled={photoUploading2} />
-                    <span className="text-2xl text-gray-300">{photoUploading2 ? '…' : '+'}</span>
-                  </label>
-                )}
-              </div>
             </div>
 
             {error && <p className="text-red-500 text-sm">{error}</p>}
