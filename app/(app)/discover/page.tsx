@@ -9,6 +9,33 @@ export default function DiscoverPage() {
   const [userId, setUserId] = useState<string | null>(null)
   const [myProfile, setMyProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [showLocationPrompt, setShowLocationPrompt] = useState(false)
+  const [locationDenied, setLocationDenied] = useState(false)
+  const [pendingUser, setPendingUser] = useState<any>(null)
+  const [pendingMe, setPendingMe] = useState<any>(null)
+
+  const loadProfiles = useCallback(async (user: any, me: any) => {
+    setMyProfile(me)
+    const data = await getDiscoverProfiles(user.id, me)
+    setProfiles(data)
+    setLoading(false)
+  }, [])
+
+  const requestLocation = useCallback(async (user: any, me: any) => {
+    setShowLocationPrompt(false)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords
+        await supabase.from('profiles').update({ latitude, longitude }).eq('id', user.id)
+        await loadProfiles(user, { ...me, latitude, longitude })
+      },
+      () => {
+        setLocationDenied(true)
+        loadProfiles(user, me)
+      },
+      { timeout: 8000, enableHighAccuracy: false }
+    )
+  }, [loadProfiles])
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -21,35 +48,31 @@ export default function DiscoverPage() {
         .eq('id', user.id)
         .single()
 
-      // Request fresh location and save it
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          async (pos) => {
-            const { latitude, longitude } = pos.coords
-            await supabase.from('profiles').update({ latitude, longitude }).eq('id', user.id)
-            const updated = { ...me, latitude, longitude }
-            setMyProfile(updated)
-            const data = await getDiscoverProfiles(user.id, updated)
-            setProfiles(data)
-            setLoading(false)
-          },
-          async () => {
-            // Permission denied or unavailable — proceed without location
-            setMyProfile(me)
-            const data = await getDiscoverProfiles(user.id, me)
-            setProfiles(data)
-            setLoading(false)
-          },
-          { timeout: 5000 }
-        )
-      } else {
-        setMyProfile(me)
-        const data = await getDiscoverProfiles(user.id, me)
-        setProfiles(data)
-        setLoading(false)
+      if (!navigator.geolocation) {
+        loadProfiles(user, me)
+        return
       }
+
+      // Check current permission state without triggering a prompt
+      if ('permissions' in navigator) {
+        const perm = await navigator.permissions.query({ name: 'geolocation' })
+        if (perm.state === 'granted') {
+          // Already allowed — get location silently
+          requestLocation(user, me)
+          return
+        } else if (perm.state === 'denied') {
+          setLocationDenied(true)
+          loadProfiles(user, me)
+          return
+        }
+      }
+
+      // State is 'prompt' — show our custom pre-prompt first
+      setPendingUser(user)
+      setPendingMe(me)
+      setShowLocationPrompt(true)
     })
-  }, [])
+  }, [loadProfiles, requestLocation])
 
   const handleSwipe = useCallback(async (direction: 'left' | 'right') => {
     if (!userId || profiles.length === 0) return
@@ -72,6 +95,31 @@ export default function DiscoverPage() {
     return haversineDistance(myProfile.latitude, myProfile.longitude, profile.latitude, profile.longitude)
   }
 
+  // Custom pre-prompt before browser asks for location
+  if (showLocationPrompt) return (
+    <div className="flex flex-col items-center justify-center h-64 gap-5 text-center px-6">
+      <div className="text-4xl">📍</div>
+      <div>
+        <p className="text-lg font-semibold text-gray-800">Enable location?</p>
+        <p className="text-sm text-gray-500 mt-1">blindspot uses your location to show you people nearby. Your exact location is never shared.</p>
+      </div>
+      <div className="flex flex-col gap-2 w-full max-w-xs">
+        <button
+          onClick={() => requestLocation(pendingUser, pendingMe)}
+          className="w-full bg-pink-500 text-white py-3 rounded-full font-semibold text-sm"
+        >
+          Allow while using the app
+        </button>
+        <button
+          onClick={() => { setShowLocationPrompt(false); loadProfiles(pendingUser, pendingMe) }}
+          className="w-full border border-gray-200 text-gray-500 py-3 rounded-full text-sm"
+        >
+          Not now
+        </button>
+      </div>
+    </div>
+  )
+
   if (loading) return (
     <div className="flex items-center justify-center h-64">
       <div className="w-8 h-8 border-2 border-pink-500 border-t-transparent rounded-full animate-spin" />
@@ -91,6 +139,11 @@ export default function DiscoverPage() {
 
   return (
     <div className="flex flex-col items-center gap-6">
+      {locationDenied && (
+        <p className="text-xs text-gray-400 bg-gray-100 rounded-full px-4 py-1.5">
+          📍 Location off — matching by interests only
+        </p>
+      )}
       <p className="text-xs text-gray-400">Drag the card or use ← → arrow keys</p>
 
       {/* Card stack */}
