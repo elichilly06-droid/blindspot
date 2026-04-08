@@ -22,44 +22,44 @@ export default function MatchesPage() {
       <h1 className="text-2xl font-bold mb-6">Matches</h1>
       {matches.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
-          <p className="text-lg font-medium">No matches yet</p>
-          <p className="text-sm mt-1">Keep swiping on Discover!</p>
+          <p className="text-sm font-medium">No matches yet</p>
+          <p className="text-xs mt-1 text-gray-300">Keep swiping on Discover</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col divide-y divide-gray-100">
           {matches.map((match: any) => {
             const other = match.user_a?.id === userId ? match.user_b : match.user_a
-            const isDateProposed = !!match.date_proposed_by
             const isDateConfirmed = match.date_confirmed
+            const isDateProposed = !!match.date_proposed_by && !isDateConfirmed
+
+            let sublabel = null
+            if (isDateConfirmed) {
+              sublabel = <span className="text-xs text-gray-400">Going on a date</span>
+            } else if (isDateProposed) {
+              sublabel = <span className="text-xs text-pink-400">Date pending</span>
+            } else if (match.revealed) {
+              sublabel = <span className="text-xs text-gray-400">Photos revealed</span>
+            } else {
+              sublabel = (
+                <div className="mt-1">
+                  <ProgressBar firstMessageAt={match.first_message_at ?? null} />
+                </div>
+              )
+            }
 
             return (
               <Link
                 key={match.id}
                 href={`/chat/${match.id}`}
-                className="flex items-center gap-4 bg-white rounded-2xl p-4 border border-pink-100 hover:border-pink-200 transition-colors shadow-sm"
+                className="flex items-center gap-4 bg-white py-4 hover:bg-gray-50 transition-colors"
               >
                 <Avatar uri={other?.photo_url} size={52} revealed={match.revealed} />
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-pink-600">{other?.name ?? '???'}</p>
-                    {isDateConfirmed && (
-                      <span className="text-xs bg-pink-100 text-pink-600 px-2 py-0.5 rounded-full">Date confirmed 💘</span>
-                    )}
-                    {isDateProposed && !isDateConfirmed && (
-                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Date proposed</span>
-                    )}
-                  </div>
-                  {!isDateConfirmed && !match.revealed && (
-                    <div className="mt-1.5">
-                      <ProgressBar firstMessageAt={match.first_message_at ?? null} />
-                    </div>
-                  )}
-                  {match.revealed && !isDateConfirmed && (
-                    <p className="text-xs text-pink-400 mt-0.5">Photos revealed — propose a date?</p>
-                  )}
+                  <p className="font-medium text-gray-900 text-sm">{other?.name ?? '???'}</p>
+                  <div className="mt-0.5">{sublabel}</div>
                 </div>
-                <svg className="w-4 h-4 text-pink-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5l7 7-7 7" />
                 </svg>
               </Link>
             )
