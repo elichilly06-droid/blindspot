@@ -533,7 +533,12 @@ function DeleteAccount({ userId }: { userId: string }) {
 
   const handleDelete = async () => {
     setDeleting(true)
-    await supabase.from('profiles').update({ is_active: false }).eq('id', userId)
+    const res = await fetch('/api/delete-account', { method: 'DELETE' })
+    if (!res.ok) {
+      setDeleting(false)
+      alert('Failed to delete account. Please try again.')
+      return
+    }
     await supabase.auth.signOut()
     router.push('/login')
   }
@@ -547,7 +552,7 @@ function DeleteAccount({ userId }: { userId: string }) {
   return (
     <div className="border border-red-100 rounded-xl p-4 flex flex-col gap-3">
       <p className="text-sm text-gray-700 font-medium">Delete your account?</p>
-      <p className="text-xs text-gray-400">Your profile will be removed and you'll be signed out.</p>
+      <p className="text-xs text-gray-400">This permanently deletes your profile, matches, messages, and account. This cannot be undone.</p>
       <div className="flex gap-2">
         <button onClick={() => setConfirm(false)} className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-sm">Cancel</button>
         <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-500 text-white py-2 rounded-xl text-sm font-medium disabled:opacity-50">
