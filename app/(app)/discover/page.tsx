@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { getDiscoverProfiles, recordSwipe, haversineDistance } from '@/lib/matching'
 import { SwipeCard } from '@/components/SwipeCard'
@@ -14,6 +15,7 @@ export default function DiscoverPage() {
   const [pendingUser, setPendingUser] = useState<any>(null)
   const [pendingMe, setPendingMe] = useState<any>(null)
   const [lastSwiped, setLastSwiped] = useState<{ profile: any; direction: 'left' | 'right' } | null>(null)
+  const [newMatch, setNewMatch] = useState<{ profile: any; matchId: string } | null>(null)
 
   const loadProfiles = useCallback(async (user: any, me: any) => {
     setMyProfile(me)
@@ -77,6 +79,13 @@ export default function DiscoverPage() {
     await recordSwipe(userId, swiped.id, direction)
     setLastSwiped({ profile: swiped, direction })
     setProfiles(prev => prev.slice(1))
+
+    if (direction === 'right') {
+      const userA = userId < swiped.id ? userId : swiped.id
+      const userB = userId < swiped.id ? swiped.id : userId
+      const { data: match } = await supabase.from('matches').select('id').eq('user_a', userA).eq('user_b', userB).maybeSingle()
+      if (match) setNewMatch({ profile: swiped, matchId: match.id })
+    }
   }, [userId, profiles])
 
   const handleUndo = useCallback(async () => {
@@ -147,6 +156,29 @@ export default function DiscoverPage() {
 
   return (
     <div className="flex flex-col items-center gap-6">
+      {newMatch && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center gap-8 p-8">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-28 h-28 rounded-full overflow-hidden bg-gray-700">
+              {newMatch.profile.photo_url && (
+                <img src={newMatch.profile.photo_url} className="w-full h-full object-cover"
+                  style={{ filter: 'blur(12px)', transform: 'scale(1.1)' }} />
+              )}
+            </div>
+            <p className="text-white text-3xl font-bold tracking-tight">It's a match</p>
+            <p className="text-white/50 text-sm">You and {newMatch.profile.name} liked each other</p>
+          </div>
+          <div className="flex flex-col gap-3 w-full max-w-xs">
+            <Link href={`/chat/${newMatch.matchId}`} onClick={() => setNewMatch(null)}
+              className="w-full bg-pink-500 text-white py-3.5 rounded-full font-semibold text-sm text-center">
+              Send a message
+            </Link>
+            <button onClick={() => setNewMatch(null)} className="text-white/40 text-sm py-2">
+              Keep swiping
+            </button>
+          </div>
+        </div>
+      )}
       <p className="text-xs text-gray-400">Drag the card or use ← → arrow keys</p>
 
       {/* Card stack */}

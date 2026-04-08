@@ -1,8 +1,10 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { useUnreadCount } from '@/hooks/useUnreadCount'
 
 const tabs = [
   {
@@ -46,6 +48,13 @@ const tabs = [
 export default function Nav() {
   const pathname = usePathname()
   const router = useRouter()
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null))
+  }, [])
+
+  const unreadCount = useUnreadCount(userId ?? '')
 
   const signOut = async () => {
     await supabase.auth.signOut()
@@ -60,9 +69,15 @@ export default function Nav() {
           <span className="text-xl font-black text-pink-500 tracking-tight">blindspot</span>
           <div className="flex items-center gap-6">
             {tabs.map(({ href, label }) => (
-              <Link key={href} href={href}
-                className={`text-sm font-medium transition-colors ${pathname === href ? 'text-pink-500' : 'text-gray-500 hover:text-gray-900'}`}>
-                {label}
+              <Link key={href} href={href} className="relative">
+                <span className={`text-sm font-medium transition-colors ${pathname === href ? 'text-pink-500' : 'text-gray-500 hover:text-gray-900'}`}>
+                  {label}
+                </span>
+                {href === '/matches' && unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-3 bg-pink-500 text-white text-xs rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 font-medium">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
               </Link>
             ))}
             <button onClick={signOut} className="text-sm text-gray-400 hover:text-gray-600 transition-colors">
@@ -84,8 +99,15 @@ export default function Nav() {
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-white border-t border-gray-100 flex safe-area-pb">
         {tabs.map(({ href, label, icon }) => (
           <Link key={href} href={href}
-            className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition-colors ${pathname === href ? 'text-pink-500' : 'text-gray-400'}`}>
-            {icon}
+            className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-xs font-medium transition-colors relative ${pathname === href ? 'text-pink-500' : 'text-gray-400'}`}>
+            <span className="relative">
+              {icon}
+              {href === '/matches' && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-pink-500 text-white text-xs rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 font-medium">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </span>
             {label}
           </Link>
         ))}

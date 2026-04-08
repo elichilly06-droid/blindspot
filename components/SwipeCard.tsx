@@ -1,4 +1,5 @@
 'use client'
+import { useState } from 'react'
 import { motion, useMotionValue, useTransform } from 'framer-motion'
 import { getAge } from '@/lib/matching'
 import { valuesCompatibilityScore, VALUES_QUESTIONS } from '@/lib/values'
@@ -11,6 +12,7 @@ interface Profile {
   year?: string
   values_answers?: Record<string, string>
   interests?: string[]
+  photos?: string[]
   prompt?: string
   prompt_answer?: string
   photo_url?: string
@@ -30,9 +32,20 @@ export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRig
   const rotate = useTransform(x, [-200, 200], [-18, 18])
   const likeOpacity = useTransform(x, [20, 100], [0, 1])
   const nopeOpacity = useTransform(x, [-100, -20], [1, 0])
+  const [photoIndex, setPhotoIndex] = useState(0)
 
   const age = profile.birthday ? getAge(profile.birthday) : null
   const distanceLabel = distance !== null ? `${distance.toFixed(1)} mi` : null
+
+  // Build ordered photo list: primary photo_url first, then extras from photos[]
+  const allPhotos: string[] = []
+  if (profile.photo_url) allPhotos.push(profile.photo_url)
+  if (profile.photos) {
+    for (const p of profile.photos) {
+      if (p !== profile.photo_url) allPhotos.push(p)
+    }
+  }
+  const currentPhoto = allPhotos[photoIndex] ?? null
 
   const theirValues = profile.values_answers ?? {}
   const compatScore = Object.keys(myValues).length > 0 && Object.keys(theirValues).length > 0
@@ -43,6 +56,17 @@ export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRig
   const sharedValues = VALUES_QUESTIONS
     .filter(q => myValues[q.id] && theirValues[q.id] && myValues[q.id] === theirValues[q.id])
     .slice(0, 2)
+
+  const handlePhotoTap = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (allPhotos.length <= 1) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    if (x > rect.width / 2) {
+      setPhotoIndex(i => Math.min(i + 1, allPhotos.length - 1))
+    } else {
+      setPhotoIndex(i => Math.max(i - 1, 0))
+    }
+  }
 
   return (
     <motion.div
@@ -58,9 +82,9 @@ export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRig
       className={`bg-white rounded-3xl shadow-xl select-none w-full max-w-sm overflow-hidden ${draggable ? 'cursor-grab' : ''}`}
     >
       {/* Photo */}
-      <div className="relative h-56 bg-gray-200">
-        {profile.photo_url ? (
-          <img src={profile.photo_url} alt=""
+      <div className="relative h-56 bg-gray-200" onClick={handlePhotoTap}>
+        {currentPhoto ? (
+          <img src={currentPhoto} alt=""
             className="w-full h-full object-cover"
             style={{ filter: 'blur(14px)', transform: 'scale(1.1)' }} />
         ) : (
@@ -69,6 +93,15 @@ export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRig
             <svg viewBox="0 0 24 24" fill="white" className="w-20 h-20 opacity-50">
               <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
             </svg>
+          </div>
+        )}
+
+        {/* Photo dots */}
+        {allPhotos.length > 1 && (
+          <div className="absolute top-2 left-0 right-0 flex justify-center gap-1 px-4">
+            {allPhotos.map((_, i) => (
+              <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i === photoIndex ? 'bg-white' : 'bg-white/40'}`} />
+            ))}
           </div>
         )}
 

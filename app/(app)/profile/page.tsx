@@ -88,10 +88,13 @@ export default function ProfilePage() {
   const [photoPreview, setPhotoPreview] = useState('')
   const [photoUploading, setPhotoUploading] = useState(false)
   const [photoError, setPhotoError] = useState('')
+  const [birthday, setBirthday] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'saved' | 'error'>('idle')
   const [locationName, setLocationName] = useState<string>('')
+  const [extraPhotos, setExtraPhotos] = useState<string[]>([])
+  const [photoUploading2, setPhotoUploading2] = useState(false)
 
   useEffect(() => {
     if (profile) {
@@ -103,11 +106,13 @@ export default function ProfilePage() {
       setHeight(profile.height ?? '')
       setRace(profile.race ?? '')
       setReligion(profile.religion ?? '')
+      setBirthday(profile.birthday ?? '')
       setSelectedInterests(profile.interests ?? [])
       setValuesAnswers(profile.values_answers ?? {})
       setSelectedPrompt(profile.prompt ?? PROMPTS[0])
       setPromptAnswer(profile.prompt_answer ?? '')
       setLocationName(profile.location_name ?? '')
+      setExtraPhotos(profile.photos ?? [])
     }
   }, [profile])
 
@@ -177,11 +182,38 @@ export default function ProfilePage() {
     )
   }
 
+  const pickExtraPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !userId) return
+    setPhotoUploading2(true)
+    try {
+      const idx = extraPhotos.length
+      const storagePath = `${userId}/photo_${idx}_${Date.now()}`
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(storagePath, file, { upsert: true, contentType: file.type })
+      if (uploadError) return
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(storagePath)
+      const newUrl = `${urlData.publicUrl}?t=${Date.now()}`
+      const updated = [...extraPhotos, newUrl]
+      setExtraPhotos(updated)
+      await updateProfile({ photos: updated })
+    } finally {
+      setPhotoUploading2(false)
+    }
+  }
+
+  const removeExtraPhoto = async (url: string) => {
+    const updated = extraPhotos.filter(p => p !== url)
+    setExtraPhotos(updated)
+    await updateProfile({ photos: updated })
+  }
+
   const save = async () => {
     setSaving(true)
     setError('')
     try {
-      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, interests: selectedInterests, values_answers: valuesAnswers, prompt: selectedPrompt, prompt_answer: promptAnswer })
+      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, birthday, interests: selectedInterests, values_answers: valuesAnswers, prompt: selectedPrompt, prompt_answer: promptAnswer })
       if (error) setError(error.message)
       else setEditing(false)
     } finally {
@@ -254,6 +286,12 @@ export default function ProfilePage() {
               value={major} onChange={e => setMajor(e.target.value)} placeholder="Major" />
             <input className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-pink-400"
               value={year} onChange={e => setYear(e.target.value)} placeholder="Year" />
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Birthday</p>
+              <input type="date" className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-pink-400 w-full text-gray-700"
+                value={birthday} onChange={e => setBirthday(e.target.value)} />
+              <p className="text-xs text-gray-400 mt-1">Used to show your age — never shared directly</p>
+            </div>
 
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Gender</p>
@@ -344,6 +382,28 @@ export default function ProfilePage() {
                 rows={3} placeholder="Your answer…" value={promptAnswer} onChange={e => setPromptAnswer(e.target.value)} />
             </div>
 
+            {/* Additional photos */}
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Additional photos</p>
+              <div className="flex flex-wrap gap-2">
+                {extraPhotos.map((url, i) => (
+                  <div key={i} className="relative w-20 h-20">
+                    <img src={url} className="w-full h-full object-cover rounded-xl" alt="" />
+                    <button type="button" onClick={() => removeExtraPhoto(url)}
+                      className="absolute -top-1.5 -right-1.5 bg-gray-700 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none">
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {extraPhotos.length < 5 && (
+                  <label className="w-20 h-20 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center cursor-pointer hover:border-pink-300 transition-colors">
+                    <input type="file" accept="image/*" className="hidden" onChange={pickExtraPhoto} disabled={photoUploading2} />
+                    <span className="text-2xl text-gray-300">{photoUploading2 ? '…' : '+'}</span>
+                  </label>
+                )}
+              </div>
+            </div>
+
             {error && <p className="text-red-500 text-sm">{error}</p>}
             <button onClick={save} disabled={saving}
               className="w-full bg-pink-500 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50 mt-1">
@@ -353,6 +413,34 @@ export default function ProfilePage() {
           </div>
         ) : (
           <div className="flex flex-col gap-4">
+            {/* Profile completeness bar */}
+            {(() => {
+              const fields = [
+                profile.photo_url,
+                profile.name,
+                profile.major,
+                profile.birthday,
+                profile.gender,
+                profile.prompt && profile.prompt_answer,
+                (profile.interests ?? []).length > 0,
+                Object.keys(profile.values_answers ?? {}).length >= 6,
+              ]
+              const done = fields.filter(Boolean).length
+              const pct = Math.round((done / fields.length) * 100)
+              if (pct >= 100) return null
+              return (
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs text-gray-500 font-medium">Profile {pct}% complete</p>
+                    <p className="text-xs text-gray-400">More = more matches</p>
+                  </div>
+                  <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-pink-400 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })()}
+
             <div className="text-center text-sm text-gray-500">
               {[profile.major, profile.year, profile.height].filter(Boolean).join(' · ')}
             </div>

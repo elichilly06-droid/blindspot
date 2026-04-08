@@ -89,6 +89,14 @@ export default function ChatPage() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Mark as read when chat is open
+  useEffect(() => {
+    if (!userId || !match?.id) return
+    const isA = match.user_a === userId
+    const update = isA ? { last_read_a: new Date().toISOString() } : { last_read_b: new Date().toISOString() }
+    supabase.from('matches').update(update).eq('id', matchId).then(() => {})
+  }, [userId, match?.id, matchId, messages.length])
+
   const send = async () => {
     if (!text.trim() || !userId) return
     const content = text.trim()
