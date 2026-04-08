@@ -16,6 +16,7 @@ create table profiles (
   latitude      float8,
   longitude     float8,
   location_name text,
+  values_answers jsonb,
   interests     text[] check (array_length(interests, 1) <= 50),
   prompt        text check (char_length(prompt) <= 200),
   prompt_answer text check (char_length(prompt_answer) <= 500),

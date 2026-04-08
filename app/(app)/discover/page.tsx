@@ -154,7 +154,7 @@ export default function DiscoverPage() {
             {i === 0 ? (
               <SwipeCard
                 profile={profile}
-                userInterests={myProfile?.interests ?? []}
+                myValues={myProfile?.values_answers ?? {}}
                 distance={getDistance(profile)}
                 onSwipeLeft={() => handleSwipe('left')}
                 onSwipeRight={() => handleSwipe('right')}

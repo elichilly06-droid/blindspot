@@ -1,6 +1,7 @@
 'use client'
 import { motion, useMotionValue, useTransform } from 'framer-motion'
 import { getAge } from '@/lib/matching'
+import { valuesCompatibilityScore, VALUES_QUESTIONS } from '@/lib/values'
 
 interface Profile {
   id: string
@@ -8,7 +9,7 @@ interface Profile {
   birthday?: string
   major?: string
   year?: string
-  interests?: string[]
+  values_answers?: Record<string, string>
   prompt?: string
   prompt_answer?: string
   photo_url?: string
@@ -16,23 +17,30 @@ interface Profile {
 
 interface SwipeCardProps {
   profile: Profile
-  userInterests: string[]
+  myValues: Record<string, string>
   distance: number | null
   onSwipeLeft: () => void
   onSwipeRight: () => void
 }
 
-export function SwipeCard({ profile, userInterests, distance, onSwipeLeft, onSwipeRight }: SwipeCardProps) {
+export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRight }: SwipeCardProps) {
   const x = useMotionValue(0)
   const rotate = useTransform(x, [-200, 200], [-18, 18])
   const likeOpacity = useTransform(x, [20, 100], [0, 1])
   const nopeOpacity = useTransform(x, [-100, -20], [1, 0])
 
   const age = profile.birthday ? getAge(profile.birthday) : null
-  const distanceLabel = distance !== null ? `${distance.toFixed(1)} mi away` : null
+  const distanceLabel = distance !== null ? `${distance.toFixed(1)} mi` : null
 
-  const sharedInterests = (profile.interests ?? []).filter(i => userInterests.includes(i))
-  const otherInterests = (profile.interests ?? []).filter(i => !userInterests.includes(i))
+  const theirValues = profile.values_answers ?? {}
+  const compatScore = Object.keys(myValues).length > 0 && Object.keys(theirValues).length > 0
+    ? valuesCompatibilityScore(myValues, theirValues)
+    : null
+
+  // Find 2 questions where both answered and align well
+  const sharedValues = VALUES_QUESTIONS
+    .filter(q => myValues[q.id] && theirValues[q.id] && myValues[q.id] === theirValues[q.id])
+    .slice(0, 2)
 
   return (
     <motion.div
@@ -50,12 +58,9 @@ export function SwipeCard({ profile, userInterests, distance, onSwipeLeft, onSwi
       {/* Photo */}
       <div className="relative h-56 bg-gray-200">
         {profile.photo_url ? (
-          <img
-            src={profile.photo_url}
-            alt=""
+          <img src={profile.photo_url} alt=""
             className="w-full h-full object-cover"
-            style={{ filter: 'blur(14px)', transform: 'scale(1.1)' }}
-          />
+            style={{ filter: 'blur(14px)', transform: 'scale(1.1)' }} />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-pink-200 to-pink-300 flex items-center justify-center"
             style={{ filter: 'blur(8px)' }}>
@@ -65,7 +70,6 @@ export function SwipeCard({ profile, userInterests, distance, onSwipeLeft, onSwi
           </div>
         )}
 
-        {/* Like / Nope stamps */}
         <motion.div style={{ opacity: likeOpacity }} className="absolute top-4 left-4 border-4 border-green-400 text-green-400 font-black text-xl px-3 py-1 rounded-lg rotate-[-12deg] bg-white/80">
           LIKE
         </motion.div>
@@ -73,19 +77,23 @@ export function SwipeCard({ profile, userInterests, distance, onSwipeLeft, onSwi
           NOPE
         </motion.div>
 
-        {/* Name / age / distance overlay */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-4 py-3">
           <div className="flex items-end justify-between">
             <div>
               <span className="text-white font-bold text-xl">{profile.name}</span>
               {age !== null && <span className="text-white/90 text-lg font-normal">, {age}</span>}
             </div>
-            {distanceLabel && (
-              <span className="text-white/80 text-xs">{distanceLabel}</span>
-            )}
+            <div className="flex flex-col items-end gap-0.5">
+              {distanceLabel && <span className="text-white/70 text-xs">{distanceLabel}</span>}
+              {compatScore !== null && (
+                <span className="text-white/90 text-xs font-medium">
+                  {Math.round(compatScore * 100)}% match
+                </span>
+              )}
+            </div>
           </div>
           {profile.major && (
-            <p className="text-white/70 text-xs mt-0.5">{profile.major} · {profile.year}</p>
+            <p className="text-white/70 text-xs mt-0.5">{profile.major}{profile.year ? ` · ${profile.year}` : ''}</p>
           )}
         </div>
       </div>
@@ -99,18 +107,13 @@ export function SwipeCard({ profile, userInterests, distance, onSwipeLeft, onSwi
           </div>
         )}
 
-        {/* Interests */}
-        {(profile.interests ?? []).length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {sharedInterests.map(i => (
-              <span key={i} className="bg-pink-100 text-pink-700 text-xs px-3 py-1 rounded-full font-medium">
-                {i}
-              </span>
-            ))}
-            {otherInterests.map(i => (
-              <span key={i} className="bg-gray-100 text-gray-500 text-xs px-3 py-1 rounded-full">
-                {i}
-              </span>
+        {sharedValues.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            {sharedValues.map(q => (
+              <div key={q.id} className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="text-pink-400">✓</span>
+                <span><span className="font-medium text-gray-700">{theirValues[q.id]}</span></span>
+              </div>
             ))}
           </div>
         )}

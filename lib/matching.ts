@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { valuesCompatibilityScore } from './values'
 
 export function haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 3958.8
@@ -89,20 +90,22 @@ export async function getDiscoverProfiles(userId: string, myProfile: any, limit 
   if (!data) return []
 
   const myInterests: string[] = myProfile?.interests ?? []
+  const myValues: Record<string, string> = myProfile?.values_answers ?? {}
   const hasMyLocation = myProfile?.latitude && myProfile?.longitude
 
   return data
     .filter((profile: any) => isCompatible(myProfile, profile))
     .sort((a: any, b: any) => {
+      const vScore = (p: any) => valuesCompatibilityScore(myValues, p.values_answers ?? {})
       const iScore = (p: any) => interestScore(myInterests, p.interests ?? [])
       const pScore = (p: any) => {
-        if (!hasMyLocation || !p.latitude || !p.longitude) return 0.5 // neutral if no location
+        if (!hasMyLocation || !p.latitude || !p.longitude) return 0.5
         const dist = haversineDistance(myProfile.latitude, myProfile.longitude, p.latitude, p.longitude)
         return proximityScore(dist)
       }
-      // 40% interests, 60% proximity
-      const scoreA = 0.4 * iScore(a) + 0.6 * pScore(a)
-      const scoreB = 0.4 * iScore(b) + 0.6 * pScore(b)
+      // 55% values, 25% proximity, 20% interests
+      const scoreA = 0.55 * vScore(a) + 0.25 * pScore(a) + 0.20 * iScore(a)
+      const scoreB = 0.55 * vScore(b) + 0.25 * pScore(b) + 0.20 * iScore(b)
       return scoreB - scoreA
     })
     .slice(0, limit)
