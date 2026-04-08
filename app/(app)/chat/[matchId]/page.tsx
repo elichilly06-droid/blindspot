@@ -149,7 +149,7 @@ export default function ChatPage() {
 
           if (msg.type === 'system') {
             return (
-              <div key={msg.id} className="self-center bg-pink-50 border border-pink-100 text-pink-600 text-xs px-4 py-2 rounded-full max-w-xs text-center">
+              <div key={msg.id} className="self-center text-gray-400 text-xs py-1 text-center">
                 {msg.content}
               </div>
             )
@@ -170,31 +170,31 @@ export default function ChatPage() {
 
       {/* Bottom action area */}
       {match?.date_confirmed ? (
-        <div className="px-4 py-5 bg-pink-50 border-t border-pink-100 text-center">
-          <p className="text-pink-600 font-semibold">It's a date! 💘</p>
-          <p className="text-xs text-pink-400 mt-1">Exchange details and make it happen</p>
+        <div className="px-6 py-4 bg-white border-t border-gray-100 text-center">
+          <p className="text-sm font-medium text-gray-800">You're going on a date</p>
+          <p className="text-xs text-gray-400 mt-0.5">Share your number and make it happen</p>
         </div>
       ) : match?.revealed ? (
-        <div className="px-4 py-4 bg-white border-t border-gray-100">
+        <div className="px-6 py-4 bg-white border-t border-gray-100">
           {!match.date_proposed_by ? (
-            <div className="text-center flex flex-col gap-3">
-              <p className="text-sm text-gray-500">Photos are out — ready to meet?</p>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-gray-500">Ready to meet in person?</p>
               <button onClick={proposeDate}
-                className="w-full bg-pink-500 text-white py-3 rounded-full font-semibold text-sm">
-                💘 Propose a date
+                className="flex-shrink-0 bg-gray-900 text-white px-5 py-2 rounded-full text-sm font-medium">
+                Ask out
               </button>
             </div>
           ) : iProposed ? (
-            <div className="text-center flex flex-col gap-2">
-              <p className="text-sm text-pink-500 font-medium">💘 Date proposed — waiting for them…</p>
-              <button onClick={cancelProposal} className="text-xs text-gray-400 underline">Cancel</button>
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm text-gray-400">Waiting for their response…</p>
+              <button onClick={cancelProposal} className="text-sm text-gray-400 underline-offset-2 underline">Cancel</button>
             </div>
           ) : theyProposed ? (
-            <div className="flex flex-col gap-3">
-              <p className="text-sm text-pink-700 font-medium text-center">💘 They want to go on a date!</p>
-              <div className="flex gap-2">
-                <button onClick={acceptDate} className="flex-1 bg-pink-500 text-white py-3 rounded-full font-semibold text-sm">Accept</button>
-                <button onClick={declineDate} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-full text-sm">Decline</button>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-gray-800 font-medium">{otherProfile?.name} asked you out</p>
+              <div className="flex gap-2 flex-shrink-0">
+                <button onClick={declineDate} className="border border-gray-200 text-gray-500 px-4 py-2 rounded-full text-sm">Pass</button>
+                <button onClick={acceptDate} className="bg-gray-900 text-white px-4 py-2 rounded-full text-sm font-medium">Accept</button>
               </div>
             </div>
           ) : null}
@@ -220,26 +220,26 @@ export default function ChatPage() {
 
       {/* Photo reveal overlay */}
       {showReveal && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex flex-col items-center justify-center gap-6 p-8">
-          <p className="text-white text-2xl font-bold">✨ Photos revealed!</p>
-          <div className="flex gap-6">
-            <div className="flex flex-col items-center gap-2">
-              {otherProfile?.photo_url ? (
-                <img src={otherProfile.photo_url} className="w-32 h-32 rounded-full object-cover border-4 border-pink-400" alt="" />
-              ) : (
-                <div className="w-32 h-32 rounded-full bg-gray-600 flex items-center justify-center text-4xl">?</div>
-              )}
-              <p className="text-white text-sm">{otherProfile?.name}</p>
+        <div className="fixed inset-0 z-50 bg-black/70 flex flex-col items-center justify-center gap-8 p-8">
+          <div className="flex flex-col items-center gap-4">
+            {otherProfile?.photo_url ? (
+              <img src={otherProfile.photo_url} className="w-36 h-36 rounded-full object-cover" alt="" />
+            ) : (
+              <div className="w-36 h-36 rounded-full bg-gray-700" />
+            )}
+            <div className="text-center">
+              <p className="text-white text-xl font-semibold">{otherProfile?.name}</p>
+              <p className="text-white/50 text-sm mt-1">Photos are now visible</p>
             </div>
           </div>
           {revealCountdown > 0 ? (
-            <p className="text-white/60 text-sm">Closing in {revealCountdown}s…</p>
+            <p className="text-white/40 text-xs">Closing in {revealCountdown}s</p>
           ) : (
             <button
               onClick={() => setShowReveal(false)}
-              className="bg-pink-500 text-white px-8 py-3 rounded-full font-semibold"
+              className="bg-white text-gray-900 px-8 py-3 rounded-full text-sm font-semibold"
             >
-              Let's go 💘
+              Continue
             </button>
           )}
         </div>
