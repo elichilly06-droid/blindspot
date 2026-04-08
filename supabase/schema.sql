@@ -15,6 +15,7 @@ create table profiles (
   religion      text check (char_length(religion) <= 50),
   latitude      float8,
   longitude     float8,
+  location_name text,
   interests     text[] check (array_length(interests, 1) <= 50),
   prompt        text check (char_length(prompt) <= 200),
   prompt_answer text check (char_length(prompt_answer) <= 500),

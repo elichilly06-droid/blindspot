@@ -125,7 +125,22 @@ export default function ProfilePage() {
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude, longitude } = pos.coords
-        const { error } = await updateProfile({ latitude, longitude })
+        // Reverse geocode to get a readable place name
+        let location_name = ''
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { 'Accept-Language': 'en' } }
+          )
+          const geo = await res.json()
+          const a = geo.address ?? {}
+          // Pick the most specific useful label: neighbourhood > suburb > quarter > city_district > city > town
+          const area = a.neighbourhood || a.suburb || a.quarter || a.city_district || ''
+          const city = a.city || a.town || a.village || a.county || ''
+          location_name = [area, city].filter(Boolean).join(', ')
+        } catch { /* ignore geocoding errors */ }
+
+        const { error } = await updateProfile({ latitude, longitude, location_name })
         setLocationStatus(error ? 'error' : 'saved')
         setTimeout(() => setLocationStatus('idle'), 3000)
       },
@@ -184,24 +199,22 @@ export default function ProfilePage() {
           )}
           {!editing && <h2 className="text-xl font-bold">{profile.name}</h2>}
 
-          {/* Location pill — Hinge-style, small and inline under name */}
+          {/* Location pill — Hinge-style, small pin + place name */}
           {!editing && (
             <button
               onClick={updateLocation}
               disabled={locationStatus === 'loading'}
               className="flex items-center gap-1 text-xs text-gray-400 hover:text-pink-500 transition-colors disabled:opacity-50"
             >
-              {locationStatus === 'saved' ? (
-                <span className="text-green-500 text-xs">✓ Location updated</span>
-              ) : locationStatus === 'loading' ? (
-                <span>📍 Updating…</span>
+              <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3 flex-shrink-0">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+              </svg>
+              {locationStatus === 'loading' ? (
+                <span>Updating…</span>
+              ) : locationStatus === 'saved' ? (
+                <span className="text-green-500">Updated</span>
               ) : (
-                <>
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-                  </svg>
-                  <span>{profile.latitude ? 'Update location' : 'Add location'}</span>
-                </>
+                <span>{profile.location_name || (profile.latitude ? 'Update location' : 'Add location')}</span>
               )}
             </button>
           )}
