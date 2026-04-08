@@ -180,7 +180,7 @@ export default function ChatPage() {
             <div className="flex items-center justify-between gap-4">
               <p className="text-sm text-gray-500">Ready to meet in person?</p>
               <button onClick={proposeDate}
-                className="flex-shrink-0 bg-gray-900 text-white px-5 py-2 rounded-full text-sm font-medium">
+                className="flex-shrink-0 bg-pink-500 text-white px-5 py-2 rounded-full text-sm font-medium">
                 Ask out
               </button>
             </div>
