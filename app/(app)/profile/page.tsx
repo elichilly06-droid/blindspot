@@ -516,6 +516,7 @@ export default function ProfilePage() {
             onSwipeLeft={() => setShowPreview(false)}
             onSwipeRight={() => setShowPreview(false)}
             draggable={false}
+            blurPhoto={false}
           />
         </div>
         <button onClick={() => setShowPreview(false)}

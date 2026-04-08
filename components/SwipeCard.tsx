@@ -25,9 +25,10 @@ interface SwipeCardProps {
   onSwipeLeft: () => void
   onSwipeRight: () => void
   draggable?: boolean
+  blurPhoto?: boolean
 }
 
-export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRight, draggable = true }: SwipeCardProps) {
+export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRight, draggable = true, blurPhoto = true }: SwipeCardProps) {
   const x = useMotionValue(0)
   const rotate = useTransform(x, [-200, 200], [-18, 18])
   const likeOpacity = useTransform(x, [20, 100], [0, 1])
@@ -86,10 +87,10 @@ export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRig
         {currentPhoto ? (
           <img src={currentPhoto} alt=""
             className="w-full h-full object-cover"
-            style={{ filter: 'blur(14px)', transform: 'scale(1.1)' }} />
+            style={blurPhoto ? { filter: 'blur(14px)', transform: 'scale(1.1)' } : undefined} />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-pink-200 to-pink-300 flex items-center justify-center"
-            style={{ filter: 'blur(8px)' }}>
+            style={blurPhoto ? { filter: 'blur(8px)' } : undefined}>
             <svg viewBox="0 0 24 24" fill="white" className="w-20 h-20 opacity-50">
               <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
             </svg>
