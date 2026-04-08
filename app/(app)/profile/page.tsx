@@ -85,6 +85,7 @@ export default function ProfilePage() {
   const [promptAnswer, setPromptAnswer] = useState('')
   const [showPreview, setShowPreview] = useState(false)
   const [allPhotos, setAllPhotos] = useState<string[]>([])
+  const [carouselIndex, setCarouselIndex] = useState(0)
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null)
   const [photoError, setPhotoError] = useState('')
   const [birthday, setBirthday] = useState('')
@@ -219,21 +220,47 @@ export default function ProfilePage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        {/* Photo grid — always visible, editable when in edit mode */}
-        <div className="mb-5">
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: 6 }).map((_, i) => {
-              const url = allPhotos[i]
-              const isMain = i === 0
-              const isNextEmpty = i === allPhotos.length
-              if (url) {
-                return (
-                  <div key={i} className={`relative aspect-square rounded-xl overflow-hidden ${isMain ? 'ring-2 ring-pink-400' : ''}`}>
-                    <img src={url} className="w-full h-full object-cover" alt="" />
-                    {isMain && (
-                      <span className="absolute bottom-1 left-1 bg-pink-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">Main</span>
-                    )}
-                    {editing && (
+        {/* Photos — carousel in view mode, grid in edit mode */}
+        {!editing ? (
+          <div className="mb-5">
+            {allPhotos.length > 0 ? (
+              <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-100"
+                onClick={e => {
+                  if (allPhotos.length <= 1) return
+                  const rect = e.currentTarget.getBoundingClientRect()
+                  setCarouselIndex(i => e.clientX - rect.left > rect.width / 2
+                    ? Math.min(i + 1, allPhotos.length - 1)
+                    : Math.max(i - 1, 0))
+                }}>
+                <img src={allPhotos[carouselIndex]} className="w-full h-full object-cover" alt="" />
+                {allPhotos.length > 1 && (
+                  <div className="absolute top-2 left-0 right-0 flex justify-center gap-1 px-4">
+                    {allPhotos.map((_, i) => (
+                      <div key={i} className={`h-1 flex-1 rounded-full transition-all ${i === carouselIndex ? 'bg-white' : 'bg-white/40'}`} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="aspect-square rounded-2xl bg-gray-100 flex items-center justify-center">
+                <span className="text-gray-300 text-sm">No photos yet</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="mb-5">
+            <div className="grid grid-cols-3 gap-2">
+              {Array.from({ length: 6 }).map((_, i) => {
+                const url = allPhotos[i]
+                const isMain = i === 0
+                const isNextEmpty = i === allPhotos.length
+                if (url) {
+                  return (
+                    <div key={i} className={`relative aspect-square rounded-xl overflow-hidden ${isMain ? 'ring-2 ring-pink-400' : ''}`}>
+                      <img src={url} className="w-full h-full object-cover" alt="" />
+                      {isMain && (
+                        <span className="absolute bottom-1 left-1 bg-pink-500 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">Main</span>
+                      )}
                       <>
                         <button onClick={() => removePhotoAtSlot(i)}
                           className="absolute top-1 right-1 bg-black/60 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs leading-none">×</button>
@@ -242,28 +269,28 @@ export default function ProfilePage() {
                             className="absolute bottom-1 right-1 bg-black/50 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full">Set main</button>
                         )}
                       </>
+                    </div>
+                  )
+                }
+                if (!isNextEmpty) return <div key={i} className="aspect-square rounded-xl bg-gray-50" />
+                return (
+                  <label key={i} className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer hover:border-pink-300 transition-colors">
+                    <input type="file" accept="image/*" className="hidden"
+                      onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhotoToSlot(f) }}
+                      disabled={uploadingSlot !== null} />
+                    {uploadingSlot === i ? (
+                      <div className="w-5 h-5 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span className="text-2xl text-gray-300">+</span>
                     )}
-                  </div>
+                  </label>
                 )
-              }
-              if (!editing || !isNextEmpty) return <div key={i} className="aspect-square rounded-xl bg-gray-50" />
-              return (
-                <label key={i} className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center cursor-pointer hover:border-pink-300 transition-colors">
-                  <input type="file" accept="image/*" className="hidden"
-                    onChange={e => { const f = e.target.files?.[0]; if (f) uploadPhotoToSlot(f) }}
-                    disabled={uploadingSlot !== null} />
-                  {uploadingSlot === i ? (
-                    <div className="w-5 h-5 border-2 border-pink-400 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <span className="text-2xl text-gray-300">+</span>
-                  )}
-                </label>
-              )
-            })}
+              })}
+            </div>
+            {photoError && <p className="text-xs text-red-500 mt-2">{photoError}</p>}
+            <p className="text-xs text-gray-400 mt-2 text-center">Tap × to remove · "Set main" to reorder · up to 6 photos</p>
           </div>
-          {photoError && <p className="text-xs text-red-500 mt-2">{photoError}</p>}
-          {editing && <p className="text-xs text-gray-400 mt-2 text-center">Tap a photo to remove or set as main · up to 6 photos</p>}
-        </div>
+        )}
 
         {/* Name + location (view mode only) */}
         {!editing && (
