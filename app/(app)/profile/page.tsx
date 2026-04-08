@@ -165,7 +165,7 @@ export default function ProfilePage() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-        {/* Avatar — always tappable to change photo */}
+        {/* Avatar + location pill */}
         <div className="flex flex-col items-center gap-2 mb-6">
           <label className="cursor-pointer relative">
             <input type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
@@ -178,12 +178,33 @@ export default function ProfilePage() {
               {photoUploading ? '…' : '✎'}
             </span>
           </label>
-          {photoUploading && <p className="text-xs text-pink-400">Uploading…</p>}
           {photoError && <p className="text-xs text-red-500">{photoError}</p>}
           {!displayPhoto && !photoUploading && (
             <p className="text-xs text-gray-400">Tap to add a photo</p>
           )}
           {!editing && <h2 className="text-xl font-bold">{profile.name}</h2>}
+
+          {/* Location pill — Hinge-style, small and inline under name */}
+          {!editing && (
+            <button
+              onClick={updateLocation}
+              disabled={locationStatus === 'loading'}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-pink-500 transition-colors disabled:opacity-50"
+            >
+              {locationStatus === 'saved' ? (
+                <span className="text-green-500 text-xs">✓ Location updated</span>
+              ) : locationStatus === 'loading' ? (
+                <span>📍 Updating…</span>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                  </svg>
+                  <span>{profile.latitude ? 'Update location' : 'Add location'}</span>
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {editing ? (
@@ -278,11 +299,6 @@ export default function ProfilePage() {
             <div className="flex flex-wrap gap-1.5 justify-center">
               {(profile.interests ?? []).map((i: string) => <Tag key={i} label={i} />)}
             </div>
-
-            <button onClick={updateLocation} disabled={locationStatus === 'loading'}
-              className="w-full border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors disabled:opacity-50">
-              {locationStatus === 'loading' ? 'Getting location…' : locationStatus === 'saved' ? '📍 Location updated!' : locationStatus === 'error' ? 'Location unavailable' : '📍 Update my location'}
-            </button>
 
             <button onClick={() => setEditing(true)}
               className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors">
