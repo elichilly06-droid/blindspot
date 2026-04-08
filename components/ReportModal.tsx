@@ -15,11 +15,13 @@ interface ReportModalProps {
   reportedId: string
   reportedName: string
   myId: string
+  matchId?: string
   onClose: () => void
   onBlocked: () => void
+  onUnmatched?: () => void
 }
 
-export function ReportModal({ reportedId, reportedName, myId, onClose, onBlocked }: ReportModalProps) {
+export function ReportModal({ reportedId, reportedName, myId, matchId, onClose, onBlocked, onUnmatched }: ReportModalProps) {
   const [view, setView] = useState<'menu' | 'report' | 'done'>('menu')
   const [reason, setReason] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -28,6 +30,12 @@ export function ReportModal({ reportedId, reportedName, myId, onClose, onBlocked
     await supabase.from('blocks').insert({ blocker_id: myId, blocked_id: reportedId })
     onBlocked()
     onClose()
+  }
+
+  const unmatch = async () => {
+    if (matchId) await supabase.from('matches').delete().eq('id', matchId)
+    onClose()
+    onUnmatched?.()
   }
 
   const submitReport = async () => {
@@ -44,6 +52,12 @@ export function ReportModal({ reportedId, reportedName, myId, onClose, onBlocked
         {view === 'menu' && (
           <>
             <p className="text-center text-sm font-semibold text-gray-700 mb-1">{reportedName}</p>
+            {matchId && (
+              <button onClick={unmatch}
+                className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-700 hover:border-gray-400 transition-colors">
+                Unmatch
+              </button>
+            )}
             <button onClick={() => setView('report')}
               className="w-full text-left px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-700 hover:border-gray-400 transition-colors">
               Report

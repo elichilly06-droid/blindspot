@@ -261,8 +261,10 @@ export default function ChatPage() {
           reportedId={otherProfile.id}
           reportedName={otherProfile.name}
           myId={userId}
+          matchId={matchId}
           onClose={() => setShowReport(false)}
           onBlocked={() => window.history.back()}
+          onUnmatched={() => window.history.back()}
         />
       )}
 
