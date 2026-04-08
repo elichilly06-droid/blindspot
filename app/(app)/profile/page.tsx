@@ -542,7 +542,11 @@ function DeleteAccount({ userId }: { userId: string }) {
 
   const handleDelete = async () => {
     setDeleting(true)
-    const res = await fetch('/api/delete-account', { method: 'DELETE' })
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch('/api/delete-account', {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${session?.access_token}` },
+    })
     if (!res.ok) {
       setDeleting(false)
       alert('Failed to delete account. Please try again.')
