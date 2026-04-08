@@ -127,6 +127,37 @@ create trigger on_new_message
   after insert on messages
   for each row execute procedure handle_new_message();
 
+-- ─── PREFERENCE COLUMNS (add to profiles) ────────────────────────────────────
+-- alter table profiles add column if not exists pref_min_age int default 18;
+-- alter table profiles add column if not exists pref_max_age int default 35;
+-- alter table profiles add column if not exists pref_max_distance int default 50;
+
+-- ─── BLOCKS ──────────────────────────────────────────────────────────────────
+create table if not exists blocks (
+  id          uuid default uuid_generate_v4() primary key,
+  blocker_id  uuid references profiles(id) on delete cascade,
+  blocked_id  uuid references profiles(id) on delete cascade,
+  created_at  timestamptz default now(),
+  unique(blocker_id, blocked_id)
+);
+
+alter table blocks enable row level security;
+create policy "Users can manage own blocks"
+  on blocks for all using (auth.uid() = blocker_id);
+
+-- ─── REPORTS ─────────────────────────────────────────────────────────────────
+create table if not exists reports (
+  id           uuid default uuid_generate_v4() primary key,
+  reporter_id  uuid references profiles(id) on delete cascade,
+  reported_id  uuid references profiles(id) on delete cascade,
+  reason       text not null,
+  created_at   timestamptz default now()
+);
+
+alter table reports enable row level security;
+create policy "Users can insert reports"
+  on reports for insert with check (auth.uid() = reporter_id);
+
 -- ─── STORAGE ─────────────────────────────────────────────────────────────────
 -- Run in Supabase dashboard or via CLI:
 -- insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true);

@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useProfile } from '@/hooks/useProfile'
@@ -345,8 +346,65 @@ export default function ProfilePage() {
               className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors">
               Edit profile
             </button>
+
+            <Link href="/settings"
+              className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors text-center block">
+              Discovery settings
+            </Link>
+
+            {/* Active toggle */}
+            <div className="flex items-center justify-between px-1 py-1">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Show me in Discover</p>
+                <p className="text-xs text-gray-400">Pause to hide your profile</p>
+              </div>
+              <button
+                onClick={async () => {
+                  const next = !profile.is_active
+                  await updateProfile({ is_active: next })
+                }}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${profile.is_active ? 'bg-pink-500' : 'bg-gray-200'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${profile.is_active ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
+            {/* Delete account */}
+            <DeleteAccount userId={userId!} />
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+function DeleteAccount({ userId }: { userId: string }) {
+  const router = useRouter()
+  const [confirm, setConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    await supabase.from('profiles').update({ is_active: false }).eq('id', userId)
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
+  if (!confirm) return (
+    <button onClick={() => setConfirm(true)} className="text-xs text-gray-300 hover:text-red-400 transition-colors text-center py-1">
+      Delete account
+    </button>
+  )
+
+  return (
+    <div className="border border-red-100 rounded-xl p-4 flex flex-col gap-3">
+      <p className="text-sm text-gray-700 font-medium">Delete your account?</p>
+      <p className="text-xs text-gray-400">Your profile will be removed and you'll be signed out.</p>
+      <div className="flex gap-2">
+        <button onClick={() => setConfirm(false)} className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-sm">Cancel</button>
+        <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-500 text-white py-2 rounded-xl text-sm font-medium disabled:opacity-50">
+          {deleting ? 'Deleting…' : 'Delete'}
+        </button>
       </div>
     </div>
   )

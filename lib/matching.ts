@@ -69,22 +69,25 @@ function proximityScore(distanceMiles: number): number {
 }
 
 export async function getDiscoverProfiles(userId: string, myProfile: any, limit = 20) {
-  const { data: swiped } = await supabase
-    .from('swipes')
-    .select('swiped_id')
-    .eq('swiper_id', userId)
+  const [{ data: swiped }, { data: blocked }] = await Promise.all([
+    supabase.from('swipes').select('swiped_id').eq('swiper_id', userId),
+    (supabase.from('blocks').select('blocker_id, blocked_id') as any)
+      .or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`),
+  ])
 
   const swipedIds = (swiped ?? []).map((s: any) => s.swiped_id)
+  const blockedIds = (blocked ?? []).flatMap((b: any) => [b.blocker_id, b.blocked_id]).filter((id: string) => id !== userId)
+  const excludeIds = [...new Set([...swipedIds, ...blockedIds])]
 
   let query = supabase
     .from('profiles')
-    .select('id, name, major, year, birthday, gender, sexuality, interests, prompt, prompt_answer, photo_url, latitude, longitude')
+    .select('id, name, major, year, birthday, gender, sexuality, interests, values_answers, prompt, prompt_answer, photo_url, latitude, longitude')
     .eq('is_active', true)
     .neq('id', userId)
     .limit(limit * 5)
 
-  if (swipedIds.length > 0)
-    query = (query as any).not('id', 'in', `(${swipedIds.map((id: string) => `"${id}"`).join(',')})`)
+  if (excludeIds.length > 0)
+    query = (query as any).not('id', 'in', `(${excludeIds.map((id: string) => `"${id}"`).join(',')})`)
 
   const { data } = await query
   if (!data) return []
@@ -92,9 +95,22 @@ export async function getDiscoverProfiles(userId: string, myProfile: any, limit 
   const myInterests: string[] = myProfile?.interests ?? []
   const myValues: Record<string, string> = myProfile?.values_answers ?? {}
   const hasMyLocation = myProfile?.latitude && myProfile?.longitude
+  const minAge = myProfile?.pref_min_age ?? 18
+  const maxAge = myProfile?.pref_max_age ?? 35
+  const maxDistance = myProfile?.pref_max_distance ?? 50
 
   return data
     .filter((profile: any) => isCompatible(myProfile, profile))
+    .filter((profile: any) => {
+      if (!profile.birthday) return true
+      const age = getAge(profile.birthday)
+      return age >= minAge && age <= maxAge
+    })
+    .filter((profile: any) => {
+      if (!hasMyLocation || !profile.latitude || !profile.longitude) return true
+      const dist = haversineDistance(myProfile.latitude, myProfile.longitude, profile.latitude, profile.longitude)
+      return dist <= maxDistance
+    })
     .sort((a: any, b: any) => {
       const vScore = (p: any) => valuesCompatibilityScore(myValues, p.values_answers ?? {})
       const iScore = (p: any) => interestScore(myInterests, p.interests ?? [])

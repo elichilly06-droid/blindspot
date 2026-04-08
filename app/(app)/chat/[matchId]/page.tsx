@@ -4,6 +4,7 @@ import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useMessages } from '@/hooks/useMessages'
 import { ProgressBar } from '@/components/ProgressBar'
+import { ReportModal } from '@/components/ReportModal'
 
 export default function ChatPage() {
   const { matchId } = useParams<{ matchId: string }>()
@@ -13,6 +14,7 @@ export default function ChatPage() {
   const [text, setText] = useState('')
   const [showReveal, setShowReveal] = useState(false)
   const [revealCountdown, setRevealCountdown] = useState(5)
+  const [showReport, setShowReport] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { messages, sendMessage } = useMessages(matchId)
@@ -137,7 +139,11 @@ export default function ChatPage() {
             <p className="text-xs text-pink-400 mt-0.5">Date confirmed 💘</p>
           )}
         </div>
-        
+        <button onClick={() => setShowReport(true)} className="text-gray-400 hover:text-gray-600 p-2 transition-colors">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+            <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+          </svg>
+        </button>
       </div>
 
 
@@ -216,6 +222,17 @@ export default function ChatPage() {
             Send
           </button>
         </div>
+      )}
+
+      {/* Report/block modal */}
+      {showReport && userId && otherProfile && (
+        <ReportModal
+          reportedId={otherProfile.id}
+          reportedName={otherProfile.name}
+          myId={userId}
+          onClose={() => setShowReport(false)}
+          onBlocked={() => window.history.back()}
+        />
       )}
 
       {/* Photo reveal overlay */}

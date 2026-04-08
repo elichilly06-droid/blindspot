@@ -10,6 +10,7 @@ interface Profile {
   major?: string
   year?: string
   values_answers?: Record<string, string>
+  interests?: string[]
   prompt?: string
   prompt_answer?: string
   photo_url?: string
@@ -112,8 +113,16 @@ export function SwipeCard({ profile, myValues, distance, onSwipeLeft, onSwipeRig
             {sharedValues.map(q => (
               <div key={q.id} className="flex items-center gap-2 text-xs text-gray-500">
                 <span className="text-pink-400">✓</span>
-                <span><span className="font-medium text-gray-700">{theirValues[q.id]}</span></span>
+                <span className="font-medium text-gray-700">{theirValues[q.id]}</span>
               </div>
+            ))}
+          </div>
+        )}
+
+        {profile.interests && profile.interests.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {profile.interests.slice(0, 6).map(i => (
+              <span key={i} className="bg-gray-100 text-gray-600 text-xs px-2.5 py-1 rounded-full">{i}</span>
             ))}
           </div>
         )}
