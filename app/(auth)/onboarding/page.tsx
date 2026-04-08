@@ -3,28 +3,39 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { VALUES_QUESTIONS } from '@/lib/values'
+import { INTERESTS } from '@/lib/interests'
 
 const PROMPTS = [
-  "A life goal of mine…",
-  "My love language is…",
-  "We'll get along if…",
-  "I go crazy for…",
-  "The way to win me over…",
-  "My most irrational fear…",
-  "I'm weirdly attracted to…",
-  "A shower thought I recently had…",
-  "Two truths and a lie…",
-  "I know the best spot in town for…",
-  "Never have I ever…",
-  "My simple pleasures…",
-  "Green flags I look for…",
-  "I'm looking for someone who…",
-  "Worst idea I've ever had…",
-  "Change my mind about…",
-  "My therapist would say…",
-  "A fun fact about me…",
-  "I'm convinced that…",
-  "People are surprised when they find out…",
+  // Core values & character
+  "The value I refuse to compromise on…",
+  "Something I've changed my mind about in the last year…",
+  "The moment I felt most proud of myself…",
+  "I know I've grown when I realized…",
+  "The thing I'm actively working on about myself…",
+  // Emotional style
+  "When I'm overwhelmed, I tend to…",
+  "The way I show love that people often miss…",
+  "What I need most when something goes wrong…",
+  "My biggest emotional blind spot is probably…",
+  "The last time I was genuinely vulnerable was…",
+  // Partnership
+  "The kind of partner I'm actively trying to be…",
+  "My non-negotiable in a relationship…",
+  "I fall for people who…",
+  "The thing I hope my future partner understands about me…",
+  "I know it's real when…",
+  // Life & ambition
+  "In five years, I see myself…",
+  "The chapter of my life I'm currently in…",
+  "My relationship with ambition looks like…",
+  "The thing I want to build in my lifetime…",
+  "My family shaped me by…",
+  // Deeper personality
+  "The question I wish people asked me more…",
+  "I feel most like myself when…",
+  "The thing that scares me most about falling in love…",
+  "My relationship with social media is…",
+  "The hill I will die on…",
 ]
 
 const RELIGIONS = ['Christian', 'Catholic', 'Jewish', 'Muslim', 'Hindu', 'Buddhist', 'Spiritual', 'Agnostic', 'Atheist', 'Other', 'Prefer not to say']
@@ -38,8 +49,8 @@ for (let ft = 4; ft <= 7; ft++) {
   for (let inc = (ft === 4 ? 8 : 0); inc <= maxIn; inc++) HEIGHTS.push(`${ft}'${inc}"`)
 }
 
-// Steps: Name, About, Identity, Values, Prompt, Photo
-const STEPS = ['Name', 'About', 'Identity', 'Values', 'Prompt', 'Photo']
+// Steps: Name, About, Identity, Values, Interests, Prompt, Photo
+const STEPS = ['Name', 'About', 'Identity', 'Values', 'Interests', 'Prompt', 'Photo']
 
 function getCoords(): Promise<{ lat: number; lng: number } | null> {
   return new Promise(resolve => {
@@ -74,6 +85,7 @@ export default function OnboardingPage() {
   const [race, setRace] = useState('')
   const [religion, setReligion] = useState('')
   const [valuesAnswers, setValuesAnswers] = useState<Record<string, string>>({})
+  const [interests, setInterests] = useState<string[]>([])
   const [promptIndex, setPromptIndex] = useState(0)
   const [promptAnswer, setPromptAnswer] = useState('')
   const [photoFile, setPhotoFile] = useState<File | null>(null)
@@ -83,6 +95,9 @@ export default function OnboardingPage() {
 
   const setAnswer = (id: string, option: string) =>
     setValuesAnswers(prev => ({ ...prev, [id]: option }))
+
+  const toggleInterest = (item: string) =>
+    setInterests(prev => prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item])
 
   const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -121,6 +136,7 @@ export default function OnboardingPage() {
         race: race || null,
         religion: religion || null,
         values_answers: valuesAnswers,
+        interests,
         prompt: PROMPTS[promptIndex],
         prompt_answer: promptAnswer,
         photo_url: photoUrl,
@@ -137,6 +153,7 @@ export default function OnboardingPage() {
 
   const answeredCount = Object.keys(valuesAnswers).length
   const isValuesStep = step === 3
+  const isInterestsStep = step === 4
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
@@ -242,8 +259,23 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 4 — Prompt */}
+          {/* Step 4 — Interests */}
           {step === 4 && (
+            <div className="flex flex-col gap-4">
+              <div>
+                <h2 className="text-2xl font-bold">Your interests</h2>
+                <p className="text-sm text-gray-400 mt-1">Pick as many as you like.{interests.length > 0 && <span className="ml-1 text-pink-500">{interests.length} selected</span>}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {INTERESTS.map(item => (
+                  <Chip key={item} label={item} selected={interests.includes(item)} onClick={() => toggleInterest(item)} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Step 5 — Prompt */}
+          {step === 5 && (
             <div className="flex flex-col gap-4">
               <h2 className="text-2xl font-bold">Answer a prompt</h2>
               <div className="flex flex-col gap-2">
@@ -263,8 +295,8 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 5 — Photo */}
-          {step === 5 && (
+          {/* Step 6 — Photo */}
+          {step === 6 && (
             <div className="flex flex-col gap-5 items-center">
               <h2 className="text-2xl font-bold self-start">Add your photo</h2>
               <p className="text-sm text-gray-500 self-start -mt-2">
@@ -305,7 +337,11 @@ export default function OnboardingPage() {
               disabled={saving || (step === STEPS.length - 1 && !photoFile)}
               className="flex-1 bg-pink-500 text-white py-3 rounded-xl font-semibold text-sm disabled:opacity-50">
               {step < STEPS.length - 1
-                ? isValuesStep && answeredCount < 5 ? `Skip (${answeredCount} answered)` : 'Next'
+                ? isValuesStep && answeredCount < 5
+                  ? `Skip (${answeredCount} answered)`
+                  : isInterestsStep && interests.length === 0
+                  ? 'Skip'
+                  : 'Next'
                 : saving ? 'Saving…' : 'Finish'}
             </button>
           </div>

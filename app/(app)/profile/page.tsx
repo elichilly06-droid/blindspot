@@ -5,28 +5,39 @@ import { supabase } from '@/lib/supabase'
 import { useProfile } from '@/hooks/useProfile'
 import { Avatar } from '@/components/Avatar'
 import { Tag } from '@/components/Tag'
+import { INTERESTS } from '@/lib/interests'
 
 const PROMPTS = [
-  "A life goal of mine…",
-  "My love language is…",
-  "We'll get along if…",
-  "I go crazy for…",
-  "The way to win me over…",
-  "My most irrational fear…",
-  "I'm weirdly attracted to…",
-  "A shower thought I recently had…",
-  "Two truths and a lie…",
-  "I know the best spot in town for…",
-  "Never have I ever…",
-  "My simple pleasures…",
-  "Green flags I look for…",
-  "I'm looking for someone who…",
-  "Worst idea I've ever had…",
-  "Change my mind about…",
-  "My therapist would say…",
-  "A fun fact about me…",
-  "I'm convinced that…",
-  "People are surprised when they find out…",
+  // Core values & character
+  "The value I refuse to compromise on…",
+  "Something I've changed my mind about in the last year…",
+  "The moment I felt most proud of myself…",
+  "I know I've grown when I realized…",
+  "The thing I'm actively working on about myself…",
+  // Emotional style
+  "When I'm overwhelmed, I tend to…",
+  "The way I show love that people often miss…",
+  "What I need most when something goes wrong…",
+  "My biggest emotional blind spot is probably…",
+  "The last time I was genuinely vulnerable was…",
+  // Partnership
+  "The kind of partner I'm actively trying to be…",
+  "My non-negotiable in a relationship…",
+  "I fall for people who…",
+  "The thing I hope my future partner understands about me…",
+  "I know it's real when…",
+  // Life & ambition
+  "In five years, I see myself…",
+  "The chapter of my life I'm currently in…",
+  "My relationship with ambition looks like…",
+  "The thing I want to build in my lifetime…",
+  "My family shaped me by…",
+  // Deeper personality
+  "The question I wish people asked me more…",
+  "I feel most like myself when…",
+  "The thing that scares me most about falling in love…",
+  "My relationship with social media is…",
+  "The hill I will die on…",
 ]
 
 const GENDERS = ['Man', 'Woman', 'Non-binary']
@@ -66,6 +77,7 @@ export default function ProfilePage() {
   const [height, setHeight] = useState('')
   const [race, setRace] = useState('')
   const [religion, setReligion] = useState('')
+  const [selectedInterests, setSelectedInterests] = useState<string[]>([])
   const [selectedPrompt, setSelectedPrompt] = useState('')
   const [promptAnswer, setPromptAnswer] = useState('')
   const [photoPreview, setPhotoPreview] = useState('')
@@ -86,6 +98,7 @@ export default function ProfilePage() {
       setHeight(profile.height ?? '')
       setRace(profile.race ?? '')
       setReligion(profile.religion ?? '')
+      setSelectedInterests(profile.interests ?? [])
       setSelectedPrompt(profile.prompt ?? PROMPTS[0])
       setPromptAnswer(profile.prompt_answer ?? '')
       setLocationName(profile.location_name ?? '')
@@ -120,6 +133,9 @@ export default function ProfilePage() {
       setPhotoUploading(false)
     }
   }
+
+  const toggleInterest = (item: string) =>
+    setSelectedInterests(prev => prev.includes(item) ? prev.filter(i => i !== item) : [...prev, item])
 
   const updateLocation = () => {
     if (!navigator.geolocation || !userId) return
@@ -159,7 +175,7 @@ export default function ProfilePage() {
     setSaving(true)
     setError('')
     try {
-      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, prompt: selectedPrompt, prompt_answer: promptAnswer })
+      const { error } = await updateProfile({ name, major, year, gender, sexuality, height, race, religion, interests: selectedInterests, prompt: selectedPrompt, prompt_answer: promptAnswer })
       if (error) setError(error.message)
       else setEditing(false)
     } finally {
@@ -266,6 +282,15 @@ export default function ProfilePage() {
               <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Religion</p>
               <div className="flex flex-wrap gap-2">
                 {RELIGIONS.map(r => <Chip key={r} label={r} selected={religion === r} onClick={() => setReligion(r)} />)}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Interests{selectedInterests.length > 0 && <span className="ml-1 text-pink-500 normal-case">({selectedInterests.length})</span>}</p>
+              <div className="flex flex-wrap gap-2">
+                {INTERESTS.map(item => (
+                  <Chip key={item} label={item} selected={selectedInterests.includes(item)} onClick={() => toggleInterest(item)} />
+                ))}
               </div>
             </div>
 
