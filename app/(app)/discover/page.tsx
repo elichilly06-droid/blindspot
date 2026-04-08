@@ -21,11 +21,33 @@ export default function DiscoverPage() {
         .eq('id', user.id)
         .single()
 
-      setMyProfile(me)
-
-      const data = await getDiscoverProfiles(user.id, me)
-      setProfiles(data)
-      setLoading(false)
+      // Request fresh location and save it
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (pos) => {
+            const { latitude, longitude } = pos.coords
+            await supabase.from('profiles').update({ latitude, longitude }).eq('id', user.id)
+            const updated = { ...me, latitude, longitude }
+            setMyProfile(updated)
+            const data = await getDiscoverProfiles(user.id, updated)
+            setProfiles(data)
+            setLoading(false)
+          },
+          async () => {
+            // Permission denied or unavailable — proceed without location
+            setMyProfile(me)
+            const data = await getDiscoverProfiles(user.id, me)
+            setProfiles(data)
+            setLoading(false)
+          },
+          { timeout: 5000 }
+        )
+      } else {
+        setMyProfile(me)
+        const data = await getDiscoverProfiles(user.id, me)
+        setProfiles(data)
+        setLoading(false)
+      }
     })
   }, [])
 

@@ -73,6 +73,7 @@ export default function ProfilePage() {
   const [photoError, setPhotoError] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [locationStatus, setLocationStatus] = useState<'idle' | 'loading' | 'saved' | 'error'>('idle')
 
   useEffect(() => {
     if (profile) {
@@ -116,6 +117,24 @@ export default function ProfilePage() {
     } finally {
       setPhotoUploading(false)
     }
+  }
+
+  const updateLocation = () => {
+    if (!navigator.geolocation || !userId) return
+    setLocationStatus('loading')
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords
+        const { error } = await updateProfile({ latitude, longitude })
+        setLocationStatus(error ? 'error' : 'saved')
+        setTimeout(() => setLocationStatus('idle'), 3000)
+      },
+      () => {
+        setLocationStatus('error')
+        setTimeout(() => setLocationStatus('idle'), 3000)
+      },
+      { timeout: 8000 }
+    )
   }
 
   const save = async () => {
@@ -260,8 +279,13 @@ export default function ProfilePage() {
               {(profile.interests ?? []).map((i: string) => <Tag key={i} label={i} />)}
             </div>
 
+            <button onClick={updateLocation} disabled={locationStatus === 'loading'}
+              className="w-full border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors disabled:opacity-50">
+              {locationStatus === 'loading' ? 'Getting location…' : locationStatus === 'saved' ? '📍 Location updated!' : locationStatus === 'error' ? 'Location unavailable' : '📍 Update my location'}
+            </button>
+
             <button onClick={() => setEditing(true)}
-              className="w-full mt-2 border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors">
+              className="w-full border border-gray-200 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:border-gray-400 transition-colors">
               Edit profile
             </button>
           </div>

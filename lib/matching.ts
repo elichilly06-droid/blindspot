@@ -54,12 +54,17 @@ function isCompatible(me: any, them: any): boolean {
   return iWantThem && theyWantMe
 }
 
-// Score by shared interests (0–1)
+// Score by shared interests (0–1, Jaccard similarity)
 function interestScore(myInterests: string[], theirInterests: string[]): number {
   if (!myInterests.length || !theirInterests.length) return 0
   const shared = theirInterests.filter(i => myInterests.includes(i)).length
   const union = new Set([...myInterests, ...theirInterests]).size
-  return shared / union // Jaccard similarity
+  return shared / union
+}
+
+// Score by proximity (0–1): 1 at 0 miles, ~0.5 at 10 miles, ~0.09 at 50 miles
+function proximityScore(distanceMiles: number): number {
+  return 1 / (1 + distanceMiles / 10)
 }
 
 export async function getDiscoverProfiles(userId: string, myProfile: any, limit = 20) {
@@ -70,7 +75,6 @@ export async function getDiscoverProfiles(userId: string, myProfile: any, limit 
 
   const swipedIds = (swiped ?? []).map((s: any) => s.swiped_id)
 
-  // Fetch a larger pool so we have enough after compatibility filtering
   let query = supabase
     .from('profiles')
     .select('id, name, major, year, birthday, gender, sexuality, interests, prompt, prompt_answer, photo_url, latitude, longitude')
@@ -79,16 +83,28 @@ export async function getDiscoverProfiles(userId: string, myProfile: any, limit 
     .limit(limit * 5)
 
   if (swipedIds.length > 0)
-    query = query.not('id', 'in', `(${swipedIds.map((id: string) => `"${id}"`).join(',')})`)
+    query = (query as any).not('id', 'in', `(${swipedIds.map((id: string) => `"${id}"`).join(',')})`)
 
   const { data } = await query
   if (!data) return []
 
   const myInterests: string[] = myProfile?.interests ?? []
+  const hasMyLocation = myProfile?.latitude && myProfile?.longitude
 
   return data
     .filter((profile: any) => isCompatible(myProfile, profile))
-    .sort((a: any, b: any) => interestScore(myInterests, b.interests ?? []) - interestScore(myInterests, a.interests ?? []))
+    .sort((a: any, b: any) => {
+      const iScore = (p: any) => interestScore(myInterests, p.interests ?? [])
+      const pScore = (p: any) => {
+        if (!hasMyLocation || !p.latitude || !p.longitude) return 0.5 // neutral if no location
+        const dist = haversineDistance(myProfile.latitude, myProfile.longitude, p.latitude, p.longitude)
+        return proximityScore(dist)
+      }
+      // 40% interests, 60% proximity
+      const scoreA = 0.4 * iScore(a) + 0.6 * pScore(a)
+      const scoreB = 0.4 * iScore(b) + 0.6 * pScore(b)
+      return scoreB - scoreA
+    })
     .slice(0, limit)
 }
 
