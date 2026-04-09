@@ -19,6 +19,9 @@ export default function ChatPage() {
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const { messages, sendMessage } = useMessages(matchId)
+  const [otherTyping, setOtherTyping] = useState(false)
+  const typingChannel = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null))
@@ -88,6 +91,21 @@ export default function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Typing presence channel
+  useEffect(() => {
+    if (!userId || !matchId) return
+    const ch = supabase.channel(`typing:${matchId}`, { config: { presence: { key: userId } } })
+    typingChannel.current = ch
+    ch.on('presence', { event: 'sync' }, () => {
+      const state = ch.presenceState<{ typing: boolean }>()
+      const isOtherTyping = Object.entries(state).some(
+        ([key, presences]) => key !== userId && presences.some(p => p.typing)
+      )
+      setOtherTyping(isOtherTyping)
+    }).subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [userId, matchId])
 
   // Mark as read when chat is open
   useEffect(() => {
@@ -183,6 +201,15 @@ export default function ChatPage() {
             </div>
           )
         })}
+        {otherTyping && (
+          <div className="flex justify-start">
+            <div className="bg-white border border-gray-100 px-4 py-3 rounded-2xl rounded-bl-sm flex gap-1 items-center">
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
@@ -242,7 +269,16 @@ export default function ChatPage() {
             className="flex-1 border border-gray-200 rounded-full px-4 py-2.5 text-sm outline-none focus:border-pink-400 transition-colors"
             placeholder="Message…"
             value={text}
-            onChange={e => setText(e.target.value)}
+            onChange={e => {
+              setText(e.target.value)
+              if (typingChannel.current && userId) {
+                typingChannel.current.track({ typing: true })
+                if (typingTimeout.current) clearTimeout(typingTimeout.current)
+                typingTimeout.current = setTimeout(() => {
+                  typingChannel.current?.track({ typing: false })
+                }, 2000)
+              }
+            }}
             onKeyDown={e => e.key === 'Enter' && send()}
           />
           <button

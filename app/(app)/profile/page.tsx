@@ -506,7 +506,7 @@ export default function ProfilePage() {
             </div>
 
             {/* Delete account */}
-            <DeleteAccount userId={userId!} />
+            <DeleteAccount />
           </div>
         )}
       </div>
@@ -535,13 +535,15 @@ export default function ProfilePage() {
   )
 }
 
-function DeleteAccount({ userId }: { userId: string }) {
+function DeleteAccount() {
   const router = useRouter()
   const [confirm, setConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const handleDelete = async () => {
     setDeleting(true)
+    setDeleteError('')
     const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/delete-account', {
       method: 'DELETE',
@@ -549,7 +551,7 @@ function DeleteAccount({ userId }: { userId: string }) {
     })
     if (!res.ok) {
       setDeleting(false)
-      alert('Failed to delete account. Please try again.')
+      setDeleteError('Failed to delete account. Please try again.')
       return
     }
     await supabase.auth.signOut()
@@ -566,8 +568,9 @@ function DeleteAccount({ userId }: { userId: string }) {
     <div className="border border-red-100 rounded-xl p-4 flex flex-col gap-3">
       <p className="text-sm text-gray-700 font-medium">Delete your account?</p>
       <p className="text-xs text-gray-400">This permanently deletes your profile, matches, messages, and account. This cannot be undone.</p>
+      {deleteError && <p className="text-xs text-red-500">{deleteError}</p>}
       <div className="flex gap-2">
-        <button onClick={() => setConfirm(false)} className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-sm">Cancel</button>
+        <button onClick={() => { setConfirm(false); setDeleteError('') }} className="flex-1 border border-gray-200 text-gray-500 py-2 rounded-xl text-sm">Cancel</button>
         <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-500 text-white py-2 rounded-xl text-sm font-medium disabled:opacity-50">
           {deleting ? 'Deleting…' : 'Delete'}
         </button>
