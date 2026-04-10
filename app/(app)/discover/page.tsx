@@ -144,13 +144,26 @@ export default function DiscoverPage() {
   )
 
   if (profiles.length === 0) return (
-    <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
-      <p className="text-xl font-semibold text-gray-700">You've seen everyone!</p>
-      <p className="text-sm text-gray-400">
-        Add more interests to your{' '}
-        <a href="/profile" className="text-pink-500 underline">profile</a>
-        {' '}to see more people.
-      </p>
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center px-6">
+      <div className="w-24 h-24 bg-pink-50 rounded-full flex items-center justify-center text-5xl select-none">
+        🔭
+      </div>
+      <div className="flex flex-col gap-2">
+        <p className="text-2xl font-bold text-gray-900">You've seen everyone</p>
+        <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
+          No new profiles nearby right now. Check back later — or update your profile to reach more people.
+        </p>
+      </div>
+      <div className="flex flex-col gap-3 w-full max-w-xs">
+        <Link href="/likes"
+          className="w-full bg-pink-500 text-white py-3.5 rounded-full font-semibold text-sm shadow-sm">
+          See who liked you
+        </Link>
+        <Link href="/profile"
+          className="w-full border border-gray-200 text-gray-700 py-3.5 rounded-full font-semibold text-sm">
+          Update your profile
+        </Link>
+      </div>
     </div>
   )
 
